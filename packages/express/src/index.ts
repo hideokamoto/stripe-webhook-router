@@ -59,9 +59,10 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
 
       // Verify signature
       try {
-        const bodyBuffer = Buffer.isBuffer(req.body)
-          ? req.body
-          : Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+        if (!Buffer.isBuffer(req.body)) {
+          throw new Error('Request body must be a raw buffer for signature verification. Use express.raw() middleware.');
+        }
+        const bodyBuffer = req.body;
 
         event = stripe.webhooks.constructEvent(
           bodyBuffer,
