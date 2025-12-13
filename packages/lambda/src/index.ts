@@ -1,31 +1,49 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import type { WebhookRouter, WebhookEvent } from '@and-subscribe/core';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 
 /**
  * Options for the Lambda adapter
  */
 export interface LambdaAdapterOptions {
+  /** Pre-configured Stripe instance */
+  stripe: Stripe;
   /** Stripe webhook secret for signature verification */
   webhookSecret: string;
-  /** Skip signature verification (for testing only) */
-  skipVerification?: boolean;
   /** Custom error handler */
-  onError?: (error: Error, event: WebhookEvent) => void;
+  onError?: (error: Error, event: WebhookEvent) => Promise<void> | void;
 }
 
 /**
  * Creates an AWS Lambda handler for handling Stripe webhooks
  *
+ * The Lambda event body is used directly for signature verification.
+ * API Gateway provides the raw body as a string (or base64-encoded string),
+ * which is decoded and used for signature verification.
+ *
+ * @example
+ * ```typescript
+ * import Stripe from 'stripe';
+ * import { lambdaAdapter } from '@and-subscribe/lambda';
+ *
+ * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+ * const router = new WebhookRouter();
+ *
+ * export const handler = lambdaAdapter(router, {
+ *   stripe,
+ *   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+ * });
+ * ```
+ *
  * @param router - The WebhookRouter instance
- * @param options - Adapter options
+ * @param options - Adapter options including a pre-configured Stripe instance
  * @returns Lambda handler function
  */
 export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
   router: WebhookRouter<TEventMap>,
   options: LambdaAdapterOptions
 ): (event: APIGatewayProxyEvent, context: Context) => Promise<APIGatewayProxyResult> {
-  const stripe = new Stripe(process.env['STRIPE_API_KEY'] ?? '');
+  const { stripe, webhookSecret, onError } = options;
 
   return async (
     lambdaEvent: APIGatewayProxyEvent,
@@ -40,53 +58,40 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
       };
     }
 
-    // Decode body if base64 encoded
-    const bodyString = lambdaEvent.isBase64Encoded
+    // Decode body if base64 encoded (API Gateway preserves raw bytes this way)
+    const rawBody = lambdaEvent.isBase64Encoded
       ? Buffer.from(lambdaEvent.body, 'base64').toString('utf8')
       : lambdaEvent.body;
 
+    // Validate signature header
+    const signature =
+      lambdaEvent.headers['stripe-signature'] ??
+      lambdaEvent.headers['Stripe-Signature'];
+
+    if (!signature) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Missing stripe-signature header' }),
+        headers: { 'Content-Type': 'application/json' },
+      };
+    }
+
     let webhookEvent: WebhookEvent;
 
-    if (options.skipVerification) {
-      // Parse the body directly for testing
-      try {
-        webhookEvent = JSON.parse(bodyString) as WebhookEvent;
-      } catch {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: 'Invalid JSON body' }),
-          headers: { 'Content-Type': 'application/json' },
-        };
-      }
-    } else {
-      // Validate signature header
-      const signature =
-        lambdaEvent.headers['stripe-signature'] ??
-        lambdaEvent.headers['Stripe-Signature'];
-
-      if (!signature) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: 'Missing stripe-signature header' }),
-          headers: { 'Content-Type': 'application/json' },
-        };
-      }
-
-      // Verify signature
-      try {
-        webhookEvent = stripe.webhooks.constructEvent(
-          bodyString,
-          signature,
-          options.webhookSecret
-        ) as unknown as WebhookEvent;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Signature verification failed';
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: message }),
-          headers: { 'Content-Type': 'application/json' },
-        };
-      }
+    // Verify signature
+    try {
+      webhookEvent = stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret
+      ) as unknown as WebhookEvent;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Signature verification failed';
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: message }),
+        headers: { 'Content-Type': 'application/json' },
+      };
     }
 
     // Dispatch the event
@@ -100,8 +105,12 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
 
-      if (options.onError) {
-        options.onError(error, webhookEvent);
+      if (onError) {
+        try {
+          await onError(error, webhookEvent);
+        } catch {
+          // Ignore errors from onError handler to preserve original error response
+        }
       }
 
       return {

@@ -2,7 +2,12 @@ import type Stripe from 'stripe';
 
 /**
  * Maps Stripe event type strings to their corresponding event types.
- * This is auto-generated from Stripe's SDK types.
+ *
+ * IMPORTANT: This map is MANUALLY MAINTAINED and must be updated when
+ * new Stripe events are added. Run `pnpm run check-events` to detect
+ * any missing or extra events compared to the installed Stripe SDK.
+ *
+ * @see MAINTAINING_STRIPE_EVENTMAP.md for maintenance instructions.
  */
 export type StripeEventMap = {
   'account.application.authorized': Stripe.AccountApplicationAuthorizedEvent;

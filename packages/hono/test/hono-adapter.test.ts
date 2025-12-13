@@ -2,27 +2,32 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { honoAdapter } from '../src/index.js';
 import { WebhookRouter } from '@and-subscribe/core';
-
-// Mock stripe
-vi.mock('stripe', () => {
-  return {
-    default: class Stripe {
-      webhooks = {
-        constructEvent: vi.fn(),
-      };
-    },
-  };
-});
+import type Stripe from 'stripe';
 
 describe('honoAdapter', () => {
   let router: WebhookRouter;
+  let mockStripe: Stripe;
+
+  const testEvent = {
+    id: 'evt_123',
+    type: 'payment_intent.succeeded',
+    data: { object: { id: 'pi_123' } },
+  };
 
   beforeEach(() => {
     router = new WebhookRouter();
+
+    // Create mock Stripe instance with constructEvent
+    mockStripe = {
+      webhooks: {
+        constructEvent: vi.fn().mockReturnValue(testEvent),
+      },
+    } as unknown as Stripe;
   });
 
   it('should return a Hono handler function', () => {
     const handler = honoAdapter(router, {
+      stripe: mockStripe,
       webhookSecret: 'whsec_test',
     });
 
@@ -35,15 +40,11 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
       webhookSecret: 'whsec_test',
-      skipVerification: true,
     }));
 
-    const body = JSON.stringify({
-      id: 'evt_123',
-      type: 'payment_intent.succeeded',
-      data: { object: { id: 'pi_123' } },
-    });
+    const body = JSON.stringify(testEvent);
 
     const req = new Request('http://localhost/webhook', {
       method: 'POST',
@@ -56,6 +57,11 @@ describe('honoAdapter', () => {
 
     const res = await app.request(req);
 
+    expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+      body,
+      'test_signature',
+      'whsec_test'
+    );
     expect(handler).toHaveBeenCalledOnce();
     expect(res.status).toBe(200);
 
@@ -66,8 +72,8 @@ describe('honoAdapter', () => {
   it('should return 400 when body is missing', async () => {
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
       webhookSecret: 'whsec_test',
-      skipVerification: true,
     }));
 
     const req = new Request('http://localhost/webhook', {
@@ -84,12 +90,13 @@ describe('honoAdapter', () => {
   it('should return 400 when signature is missing', async () => {
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
       webhookSecret: 'whsec_test',
     }));
 
     const req = new Request('http://localhost/webhook', {
       method: 'POST',
-      body: JSON.stringify({ id: 'evt_123', type: 'test', data: {} }),
+      body: JSON.stringify(testEvent),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -97,5 +104,138 @@ describe('honoAdapter', () => {
 
     const res = await app.request(req);
     expect(res.status).toBe(400);
+  });
+
+  it('should return 400 when signature verification fails', async () => {
+    (mockStripe.webhooks.constructEvent as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error('Invalid signature');
+    });
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
+      webhookSecret: 'whsec_test',
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: JSON.stringify(testEvent),
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'invalid_signature',
+      },
+    });
+
+    const res = await app.request(req);
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toEqual({ error: 'Invalid signature' });
+  });
+
+  it('should return 500 when handler throws', async () => {
+    const handler = vi.fn().mockRejectedValue(new Error('Handler error'));
+    router.on('payment_intent.succeeded', handler);
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
+      webhookSecret: 'whsec_test',
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: JSON.stringify(testEvent),
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'test_signature',
+      },
+    });
+
+    const res = await app.request(req);
+    expect(res.status).toBe(500);
+  });
+
+  it('should call onError handler when dispatch fails', async () => {
+    const handler = vi.fn().mockRejectedValue(new Error('Handler error'));
+    const onError = vi.fn();
+    router.on('payment_intent.succeeded', handler);
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
+      webhookSecret: 'whsec_test',
+      onError,
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: JSON.stringify(testEvent),
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'test_signature',
+      },
+    });
+
+    await app.request(req);
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ type: 'payment_intent.succeeded' })
+    );
+  });
+
+  it('should handle async onError handler', async () => {
+    const handler = vi.fn().mockRejectedValue(new Error('Handler error'));
+    const onError = vi.fn().mockResolvedValue(undefined);
+    router.on('payment_intent.succeeded', handler);
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
+      webhookSecret: 'whsec_test',
+      onError,
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: JSON.stringify(testEvent),
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'test_signature',
+      },
+    });
+
+    const res = await app.request(req);
+
+    expect(onError).toHaveBeenCalled();
+    expect(res.status).toBe(500);
+  });
+
+  it('should not crash if onError throws', async () => {
+    const handler = vi.fn().mockRejectedValue(new Error('Handler error'));
+    const onError = vi.fn().mockRejectedValue(new Error('onError failed'));
+    router.on('payment_intent.succeeded', handler);
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      stripe: mockStripe,
+      webhookSecret: 'whsec_test',
+      onError,
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: JSON.stringify(testEvent),
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'test_signature',
+      },
+    });
+
+    const res = await app.request(req);
+
+    expect(onError).toHaveBeenCalled();
+    expect(res.status).toBe(500);
   });
 });

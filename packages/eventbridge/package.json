@@ -13,7 +13,7 @@
         "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.cts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
       }
     }
@@ -28,8 +28,8 @@
     "@and-subscribe/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.131",
-    "stripe": "^14.0.0",
+    "@types/aws-lambda": "^8.10.159",
+    "stripe": "^20.0.0",
     "tsup": "^8.0.0",
     "vitest": "^1.0.0",
     "typescript": "^5.3.0"

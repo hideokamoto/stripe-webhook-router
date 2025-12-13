@@ -13,7 +13,7 @@
         "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.cts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
       }
     }
@@ -22,14 +22,16 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check-events": "tsx scripts/check-events.ts"
   },
   "dependencies": {
     "@and-subscribe/core": "workspace:*"
   },
   "devDependencies": {
-    "stripe": "^14.0.0",
+    "stripe": "^20.0.0",
     "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
     "vitest": "^1.0.0",
     "typescript": "^5.3.0"
   },
