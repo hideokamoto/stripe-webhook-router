@@ -36,7 +36,7 @@
   },
   "peerDependencies": {
     "hono": ">=4.0.0",
-    "stripe": ">=14.0.0"
+    "stripe": ">=17.0.0"
   },
   "keywords": ["stripe", "webhook", "router", "hono", "typescript"],
   "license": "MIT"

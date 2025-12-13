@@ -36,7 +36,7 @@
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "stripe": ">=14.0.0"
+    "stripe": ">=17.0.0"
   },
   "keywords": ["stripe", "webhook", "router", "typescript"],
   "license": "MIT"
