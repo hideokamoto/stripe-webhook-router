@@ -1,5 +1,5 @@
 {
-  "name": "@and-subscribe/core",
+  "name": "@tayori/core",
   "version": "0.1.0",
   "description": "Core routing logic for Stripe Webhook events",
   "type": "module",

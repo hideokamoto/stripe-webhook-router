@@ -1,5 +1,5 @@
 {
-  "name": "@and-subscribe/stripe",
+  "name": "@tayori/stripe",
   "version": "0.1.0",
   "description": "Stripe-specific type definitions and utilities",
   "type": "module",
@@ -26,7 +26,7 @@
     "check-events": "tsx scripts/check-events.ts"
   },
   "dependencies": {
-    "@and-subscribe/core": "workspace:*"
+    "@tayori/core": "workspace:*"
   },
   "devDependencies": {
     "stripe": "^20.0.0",

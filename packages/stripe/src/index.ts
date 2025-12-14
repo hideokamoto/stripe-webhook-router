@@ -366,7 +366,7 @@ export type StripeEventType<T extends StripeEventName> = StripeEventMap[T];
 export type { Stripe };
 
 // Re-export core types and classes
-import { WebhookRouter, type WebhookEvent, type EventHandler } from '@and-subscribe/core';
+import { WebhookRouter, type WebhookEvent, type EventHandler } from '@tayori/core';
 export { WebhookRouter, type WebhookEvent, type EventHandler };
 
 /**

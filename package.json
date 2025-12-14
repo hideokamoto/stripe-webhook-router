@@ -1,8 +1,8 @@
 {
-  "name": "and-subscribe",
+  "name": "tayori",
   "version": "0.0.0",
   "private": true,
-  "description": "A Hono-like API for Stripe Webhook event routing",
+  "description": "A Hono-inspired type-safe Stripe Webhook routing library",
   "type": "module",
   "scripts": {
     "test": "pnpm -r test",

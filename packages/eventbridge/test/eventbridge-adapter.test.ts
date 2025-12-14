@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { EventBridgeEvent, Context } from 'aws-lambda';
 import { eventBridgeAdapter } from '../src/index.js';
-import { WebhookRouter } from '@and-subscribe/core';
+import { WebhookRouter } from '@tayori/core';
 
 describe('eventBridgeAdapter', () => {
   let mockContext: Context;

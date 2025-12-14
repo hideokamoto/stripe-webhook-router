@@ -1,5 +1,5 @@
 {
-  "name": "@and-subscribe/hono",
+  "name": "@tayori/hono",
   "version": "0.1.0",
   "description": "Hono adapter for Stripe Webhook Router",
   "type": "module",
@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@and-subscribe/core": "workspace:*"
+    "@tayori/core": "workspace:*"
   },
   "devDependencies": {
     "hono": "^4.0.0",

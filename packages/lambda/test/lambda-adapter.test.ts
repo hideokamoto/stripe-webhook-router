@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { lambdaAdapter } from '../src/index.js';
-import { WebhookRouter } from '@and-subscribe/core';
+import { WebhookRouter } from '@tayori/core';
 import type Stripe from 'stripe';
 
 describe('lambdaAdapter', () => {

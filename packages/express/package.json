@@ -1,5 +1,5 @@
 {
-  "name": "@and-subscribe/express",
+  "name": "@tayori/express",
   "version": "0.1.0",
   "description": "Express adapter for Stripe Webhook Router",
   "type": "module",
@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@and-subscribe/core": "workspace:*"
+    "@tayori/core": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

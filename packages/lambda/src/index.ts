@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
-import type { WebhookRouter, WebhookEvent } from '@and-subscribe/core';
+import type { WebhookRouter, WebhookEvent } from '@tayori/core';
 import type Stripe from 'stripe';
 
 /**
@@ -24,7 +24,7 @@ export interface LambdaAdapterOptions {
  * @example
  * ```typescript
  * import Stripe from 'stripe';
- * import { lambdaAdapter } from '@and-subscribe/lambda';
+ * import { lambdaAdapter } from '@tayori/lambda';
  *
  * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
  * const router = new WebhookRouter();
@@ -123,4 +123,4 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@and-subscribe/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';
