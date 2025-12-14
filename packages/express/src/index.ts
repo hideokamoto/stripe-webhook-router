@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { WebhookRouter, WebhookEvent } from '@and-subscribe/core';
+import type { WebhookRouter, WebhookEvent } from '@tayori/core';
 import type Stripe from 'stripe';
 
 /**
@@ -24,7 +24,7 @@ export interface ExpressAdapterOptions {
  * ```typescript
  * import express from 'express';
  * import Stripe from 'stripe';
- * import { expressAdapter } from '@and-subscribe/express';
+ * import { expressAdapter } from '@tayori/express';
  *
  * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
  * const app = express();
@@ -103,4 +103,4 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@and-subscribe/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';

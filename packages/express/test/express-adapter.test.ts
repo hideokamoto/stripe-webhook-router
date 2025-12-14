@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { expressAdapter } from '../src/index.js';
-import { WebhookRouter } from '@and-subscribe/core';
+import { WebhookRouter } from '@tayori/core';
 import type Stripe from 'stripe';
 
 describe('expressAdapter', () => {

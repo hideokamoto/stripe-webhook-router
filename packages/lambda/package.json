@@ -1,5 +1,5 @@
 {
-  "name": "@and-subscribe/lambda",
+  "name": "@tayori/lambda",
   "version": "0.1.0",
   "description": "AWS Lambda adapter for Stripe Webhook Router",
   "type": "module",
@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@and-subscribe/core": "workspace:*"
+    "@tayori/core": "workspace:*"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.159",
