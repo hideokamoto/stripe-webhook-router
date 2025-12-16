@@ -52,7 +52,7 @@ Extends `WebhookRouter` with Stripe-specific types:
 
 **CRITICAL**: This is a manually maintained type map of all 253 Stripe event types.
 
-Lines 12-351 contain the complete event map. When Stripe adds new events:
+The `StripeEventMap` type definition contains the complete event map. When Stripe adds new events:
 1. The map must be manually updated
 2. Run `pnpm run check-events` to verify completeness
 3. See `MAINTAINING_STRIPE_EVENTMAP.md` for maintenance procedures
