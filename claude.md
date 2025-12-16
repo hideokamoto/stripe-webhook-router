@@ -27,7 +27,7 @@ packages/
 1. **Type Safety First**: All Stripe events (253+ types) are fully typed using the official Stripe SDK types
 2. **Framework Agnostic Core**: Core routing logic has no framework dependencies
 3. **Adapter Pattern**: Framework integrations are separate packages that wrap the core
-4. **Chain-able API**: Hono-inspired fluent interface for registering handlers
+4. **Chainable API**: Hono-inspired fluent interface for registering handlers
 
 ## Core Concepts
 
