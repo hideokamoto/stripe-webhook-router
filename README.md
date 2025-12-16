@@ -28,16 +28,16 @@ Tayori provides a clean, type-safe API for handling Stripe webhooks with full Ty
 
 ```bash
 # For Hono
-npm install @tayori/stripe @tayori/hono stripe
+pnpm add @tayori/stripe @tayori/hono stripe
 
 # For Express
-npm install @tayori/stripe @tayori/express stripe
+pnpm add @tayori/stripe @tayori/express stripe
 
 # For AWS Lambda
-npm install @tayori/stripe @tayori/lambda stripe
+pnpm add @tayori/stripe @tayori/lambda stripe
 
 # For AWS EventBridge
-npm install @tayori/stripe @tayori/eventbridge stripe
+pnpm add @tayori/stripe @tayori/eventbridge stripe
 ```
 
 ## Quick Start
