@@ -68,7 +68,7 @@ Each adapter follows the same pattern:
 5. Dispatch to router
 6. Return framework-specific response
 
-### Example: Hono Adapter (packages/hono/src/index.ts:43-96)
+### Example: Hono Adapter (packages/hono/src/index.ts)
 
 ```typescript
 export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
