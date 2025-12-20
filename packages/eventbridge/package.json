@@ -1,7 +1,7 @@
 {
   "name": "@tayori/eventbridge",
   "version": "0.1.0",
-  "description": "AWS EventBridge adapter for Stripe Webhook Router",
+  "description": "AWS EventBridge adapter for Tayori Webhook Router",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,14 +29,10 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.159",
-    "stripe": "^20.0.0",
     "tsup": "^8.0.0",
     "vitest": "^1.0.0",
     "typescript": "^5.3.0"
   },
-  "peerDependencies": {
-    "stripe": ">=17.0.0"
-  },
-  "keywords": ["stripe", "webhook", "router", "eventbridge", "aws", "typescript"],
+  "keywords": ["webhook", "router", "eventbridge", "aws", "typescript"],
   "license": "MIT"
 }

@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { honoAdapter } from '../src/index.js';
-import { WebhookRouter } from '@tayori/core';
-import type Stripe from 'stripe';
+import { WebhookRouter, type Verifier, type WebhookEvent } from '@tayori/core';
 
 describe('honoAdapter', () => {
   let router: WebhookRouter;
-  let mockStripe: Stripe;
+  let mockVerifier: Verifier<WebhookEvent>;
 
   const testEvent = {
     id: 'evt_123',
@@ -17,18 +16,13 @@ describe('honoAdapter', () => {
   beforeEach(() => {
     router = new WebhookRouter();
 
-    // Create mock Stripe instance with constructEvent
-    mockStripe = {
-      webhooks: {
-        constructEvent: vi.fn().mockReturnValue(testEvent),
-      },
-    } as unknown as Stripe;
+    // Create mock verifier
+    mockVerifier = vi.fn().mockReturnValue({ event: testEvent });
   });
 
   it('should return a Hono handler function', () => {
     const handler = honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     expect(typeof handler).toBe('function');
@@ -40,8 +34,7 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     }));
 
     const body = JSON.stringify(testEvent);
@@ -57,10 +50,12 @@ describe('honoAdapter', () => {
 
     const res = await app.request(req);
 
-    expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+    expect(mockVerifier).toHaveBeenCalledWith(
       body,
-      'test_signature',
-      'whsec_test'
+      expect.objectContaining({
+        'content-type': 'application/json',
+        'stripe-signature': 'test_signature',
+      })
     );
     expect(handler).toHaveBeenCalledOnce();
     expect(res.status).toBe(200);
@@ -72,8 +67,7 @@ describe('honoAdapter', () => {
   it('should return 400 when body is missing', async () => {
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     }));
 
     const req = new Request('http://localhost/webhook', {
@@ -87,34 +81,14 @@ describe('honoAdapter', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 400 when signature is missing', async () => {
-    const app = new Hono();
-    app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
-    }));
-
-    const req = new Request('http://localhost/webhook', {
-      method: 'POST',
-      body: JSON.stringify(testEvent),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const res = await app.request(req);
-    expect(res.status).toBe(400);
-  });
-
-  it('should return 400 when signature verification fails', async () => {
-    (mockStripe.webhooks.constructEvent as ReturnType<typeof vi.fn>).mockImplementation(() => {
+  it('should return 400 when verifier throws', async () => {
+    (mockVerifier as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error('Invalid signature');
     });
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     }));
 
     const req = new Request('http://localhost/webhook', {
@@ -139,8 +113,7 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     }));
 
     const req = new Request('http://localhost/webhook', {
@@ -163,8 +136,7 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     }));
 
@@ -192,8 +164,7 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     }));
 
@@ -219,8 +190,7 @@ describe('honoAdapter', () => {
 
     const app = new Hono();
     app.post('/webhook', honoAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     }));
 

@@ -1,21 +1,18 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
-import type { WebhookRouter, WebhookEvent } from '@tayori/core';
-import type Stripe from 'stripe';
+import type { WebhookRouter, WebhookEvent, Verifier } from '@tayori/core';
 
 /**
  * Options for the Lambda adapter
  */
-export interface LambdaAdapterOptions {
-  /** Pre-configured Stripe instance */
-  stripe: Stripe;
-  /** Stripe webhook secret for signature verification */
-  webhookSecret: string;
+export interface LambdaAdapterOptions<T extends WebhookEvent = WebhookEvent> {
+  /** Webhook verifier function for signature validation and event parsing */
+  verifier: Verifier<T>;
   /** Custom error handler */
-  onError?: (error: Error, event: WebhookEvent) => Promise<void> | void;
+  onError?: (error: Error, event?: T) => Promise<void> | void;
 }
 
 /**
- * Creates an AWS Lambda handler for handling Stripe webhooks
+ * Creates an AWS Lambda handler for handling webhooks
  *
  * The Lambda event body is used directly for signature verification.
  * API Gateway provides the raw body as a string (or base64-encoded string),
@@ -23,27 +20,25 @@ export interface LambdaAdapterOptions {
  *
  * @example
  * ```typescript
- * import Stripe from 'stripe';
  * import { lambdaAdapter } from '@tayori/lambda';
+ * import { createStripeVerifier, StripeWebhookRouter } from '@tayori/stripe';
  *
- * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
- * const router = new WebhookRouter();
+ * const router = new StripeWebhookRouter();
  *
  * export const handler = lambdaAdapter(router, {
- *   stripe,
- *   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+ *   verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
  * });
  * ```
  *
  * @param router - The WebhookRouter instance
- * @param options - Adapter options including a pre-configured Stripe instance
+ * @param options - Adapter options including a verifier function
  * @returns Lambda handler function
  */
 export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
   router: WebhookRouter<TEventMap>,
-  options: LambdaAdapterOptions
+  options: LambdaAdapterOptions<TEventMap[keyof TEventMap]>
 ): (event: APIGatewayProxyEvent, context: Context) => Promise<APIGatewayProxyResult> {
-  const { stripe, webhookSecret, onError } = options;
+  const { verifier, onError } = options;
 
   return async (
     lambdaEvent: APIGatewayProxyEvent,
@@ -63,30 +58,22 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
       ? Buffer.from(lambdaEvent.body, 'base64').toString('utf8')
       : lambdaEvent.body;
 
-    // Validate signature header
-    const signature =
-      lambdaEvent.headers['stripe-signature'] ??
-      lambdaEvent.headers['Stripe-Signature'];
-
-    if (!signature) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing stripe-signature header' }),
-        headers: { 'Content-Type': 'application/json' },
-      };
+    // Collect headers for verifier (normalize to lowercase)
+    const headers: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(lambdaEvent.headers)) {
+      if (value !== null) {
+        headers[key.toLowerCase()] = value;
+      }
     }
 
-    let webhookEvent: WebhookEvent;
+    let webhookEvent: TEventMap[keyof TEventMap];
 
-    // Verify signature
+    // Verify signature and parse event
     try {
-      webhookEvent = stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret
-      ) as unknown as WebhookEvent;
+      const result = await verifier(rawBody, headers);
+      webhookEvent = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Signature verification failed';
+      const message = err instanceof Error ? err.message : 'Verification failed';
       return {
         statusCode: 400,
         body: JSON.stringify({ error: message }),
@@ -123,4 +110,4 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware, type Verifier, type VerifyResult } from '@tayori/core';

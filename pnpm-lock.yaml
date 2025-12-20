@@ -29,9 +29,6 @@ importers:
 
   packages/core:
     devDependencies:
-      stripe:
-        specifier: ^20.0.0
-        version: 20.0.0(@types/node@20.19.26)
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
@@ -44,16 +41,13 @@ importers:
 
   packages/eventbridge:
     dependencies:
-      '@and-subscribe/core':
+      '@tayori/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
       '@types/aws-lambda':
         specifier: ^8.10.159
         version: 8.10.159
-      stripe:
-        specifier: ^20.0.0
-        version: 20.0.0(@types/node@20.19.26)
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
@@ -66,7 +60,7 @@ importers:
 
   packages/express:
     dependencies:
-      '@and-subscribe/core':
+      '@tayori/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -76,9 +70,6 @@ importers:
       express:
         specifier: ^4.18.2
         version: 4.22.1
-      stripe:
-        specifier: ^20.0.0
-        version: 20.0.0(@types/node@20.19.26)
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
@@ -91,16 +82,13 @@ importers:
 
   packages/hono:
     dependencies:
-      '@and-subscribe/core':
+      '@tayori/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
       hono:
         specifier: ^4.0.0
         version: 4.10.8
-      stripe:
-        specifier: ^20.0.0
-        version: 20.0.0(@types/node@20.19.26)
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
@@ -113,16 +101,13 @@ importers:
 
   packages/lambda:
     dependencies:
-      '@and-subscribe/core':
+      '@tayori/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
       '@types/aws-lambda':
         specifier: ^8.10.159
         version: 8.10.159
-      stripe:
-        specifier: ^20.0.0
-        version: 20.0.0(@types/node@20.19.26)
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
@@ -135,7 +120,7 @@ importers:
 
   packages/stripe:
     dependencies:
-      '@and-subscribe/core':
+      '@tayori/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

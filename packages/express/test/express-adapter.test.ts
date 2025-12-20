@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { expressAdapter } from '../src/index.js';
-import { WebhookRouter } from '@tayori/core';
-import type Stripe from 'stripe';
+import { WebhookRouter, type Verifier, type WebhookEvent } from '@tayori/core';
 
 describe('expressAdapter', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
   let router: WebhookRouter;
-  let mockStripe: Stripe;
+  let mockVerifier: Verifier<WebhookEvent>;
 
   const testEvent = {
     id: 'evt_123',
@@ -32,18 +31,13 @@ describe('expressAdapter', () => {
 
     router = new WebhookRouter();
 
-    // Create mock Stripe instance with constructEvent
-    mockStripe = {
-      webhooks: {
-        constructEvent: vi.fn().mockReturnValue(testEvent),
-      },
-    } as unknown as Stripe;
+    // Create mock verifier
+    mockVerifier = vi.fn().mockReturnValue({ event: testEvent });
   });
 
   it('should return an express middleware function', () => {
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     expect(typeof middleware).toBe('function');
@@ -54,28 +48,47 @@ describe('expressAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     await middleware(mockReq as Request, mockRes as Response, vi.fn());
 
-    expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+    expect(mockVerifier).toHaveBeenCalledWith(
       mockReq.body,
-      'test_signature',
-      'whsec_test'
+      expect.objectContaining({
+        'stripe-signature': 'test_signature',
+      })
     );
     expect(handler).toHaveBeenCalledOnce();
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith({ received: true });
   });
 
+  it('should accept string body', async () => {
+    mockReq.body = JSON.stringify(testEvent);
+
+    const handler = vi.fn().mockResolvedValue(undefined);
+    router.on('payment_intent.succeeded', handler);
+
+    const middleware = expressAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    await middleware(mockReq as Request, mockRes as Response, vi.fn());
+
+    expect(mockVerifier).toHaveBeenCalledWith(
+      JSON.stringify(testEvent),
+      expect.any(Object)
+    );
+    expect(handler).toHaveBeenCalledOnce();
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
   it('should return 400 when body is missing', async () => {
     mockReq.body = undefined;
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     await middleware(mockReq as Request, mockRes as Response, vi.fn());
@@ -86,12 +99,11 @@ describe('expressAdapter', () => {
     );
   });
 
-  it('should return 400 when body is not a Buffer', async () => {
-    mockReq.body = JSON.stringify(testEvent); // String instead of Buffer
+  it('should return 400 when body is not a Buffer or string', async () => {
+    mockReq.body = { parsed: 'json' }; // Object instead of Buffer/string
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     await middleware(mockReq as Request, mockRes as Response, vi.fn());
@@ -99,35 +111,18 @@ describe('expressAdapter', () => {
     expect(mockRes.status).toHaveBeenCalledWith(400);
     expect(mockRes.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: expect.stringContaining('raw Buffer'),
+        error: expect.stringContaining('raw Buffer or string'),
       })
     );
   });
 
-  it('should return 400 when signature is missing', async () => {
-    mockReq.headers = {};
-
-    const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
-    });
-
-    await middleware(mockReq as Request, mockRes as Response, vi.fn());
-
-    expect(mockRes.status).toHaveBeenCalledWith(400);
-    expect(mockRes.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: expect.any(String) })
-    );
-  });
-
-  it('should return 400 when signature verification fails', async () => {
-    (mockStripe.webhooks.constructEvent as ReturnType<typeof vi.fn>).mockImplementation(() => {
+  it('should return 400 when verifier throws', async () => {
+    (mockVerifier as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error('Invalid signature');
     });
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     await middleware(mockReq as Request, mockRes as Response, vi.fn());
@@ -143,8 +138,7 @@ describe('expressAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     await middleware(mockReq as Request, mockRes as Response, vi.fn());
@@ -161,8 +155,7 @@ describe('expressAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 
@@ -180,8 +173,7 @@ describe('expressAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 
@@ -197,8 +189,7 @@ describe('expressAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const middleware = expressAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 
