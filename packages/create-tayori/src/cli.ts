@@ -10,7 +10,7 @@ export interface CliOptions {
   skipInstall?: boolean;
 }
 
-export function parseCli(): CliOptions {
+export function parseCli(argv?: string[]): CliOptions {
   const cli = cac('create-tayori');
 
   cli
@@ -21,7 +21,7 @@ export function parseCli(): CliOptions {
     .option('--skip-install', 'Skip installing dependencies')
     .help();
 
-  const parsed = cli.parse();
+  const parsed = cli.parse(argv);
 
   return {
     projectName: parsed.args[0],
