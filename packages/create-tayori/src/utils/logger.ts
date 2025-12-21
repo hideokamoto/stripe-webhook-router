@@ -14,7 +14,7 @@ export const logger = {
   },
 
   error: (message: string) => {
-    console.log(pc.red('✖'), message);
+    console.error(pc.red('✖'), message);
   },
 
   title: (message: string) => {

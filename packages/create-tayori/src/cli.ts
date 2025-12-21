@@ -1,5 +1,13 @@
 import cac from 'cac';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import type { PackageManager } from './utils/install.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(
+  readFileSync(path.join(__dirname, '../package.json'), 'utf-8')
+);
 
 export type Framework = 'hono' | 'express' | 'lambda' | 'eventbridge';
 
@@ -14,7 +22,7 @@ export function parseCli(argv?: string[]): CliOptions {
   const cli = cac('create-tayori');
 
   cli
-    .version('0.1.0')
+    .version(packageJson.version)
     .usage('[project-name] [options]')
     .option('--fw, --framework <framework>', 'Framework to use (hono, express, lambda, eventbridge)')
     .option('--pm, --package-manager <pm>', 'Package manager to use (pnpm, npm, yarn, bun)')

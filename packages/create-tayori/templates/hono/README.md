@@ -7,7 +7,7 @@ A Stripe webhook handler built with [Tayori](https://github.com/hideokamoto/stri
 ### 1. Install Dependencies
 
 ```bash
-pnpm install
+{{PACKAGE_MANAGER}} install
 ```
 
 ### 2. Configure Environment Variables
@@ -26,7 +26,7 @@ Then edit `.env` and add your Stripe API keys:
 ### 3. Run the Development Server
 
 ```bash
-pnpm dev
+{{PACKAGE_MANAGER}} dev
 ```
 
 The server will start on `http://localhost:3000`.
@@ -74,7 +74,7 @@ All Stripe event types are fully typed for TypeScript autocomplete and type safe
 ### Build for Production
 
 ```bash
-pnpm build
+{{PACKAGE_MANAGER}} build
 ```
 
 ### Deploy to Cloudflare Workers
@@ -82,7 +82,7 @@ pnpm build
 1. Install Wrangler:
 
 ```bash
-pnpm add -D wrangler
+{{PACKAGE_MANAGER}} add -D wrangler
 ```
 
 2. Create `wrangler.toml`:
@@ -99,7 +99,7 @@ PORT = "8787"
 3. Deploy:
 
 ```bash
-pnpm wrangler deploy
+{{PACKAGE_MANAGER}} wrangler deploy
 ```
 
 ### Deploy to Other Platforms

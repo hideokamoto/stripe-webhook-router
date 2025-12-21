@@ -3,13 +3,16 @@ import { logger } from './logger.js';
 
 describe('Logger', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   describe('info', () => {
@@ -40,11 +43,11 @@ describe('Logger', () => {
   });
 
   describe('error', () => {
-    it('should log error message', () => {
+    it('should log error message to stderr', () => {
       logger.error('Test error message');
 
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0]).toMatchSnapshot();
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy.mock.calls[0]).toMatchSnapshot();
     });
   });
 
@@ -83,7 +86,7 @@ describe('Logger', () => {
     it('should include the message text in error', () => {
       logger.error('Error occurred');
 
-      const lastCall = consoleLogSpy.mock.calls[0];
+      const lastCall = consoleErrorSpy.mock.calls[0];
       expect(lastCall.join(' ')).toContain('Error occurred');
     });
   });

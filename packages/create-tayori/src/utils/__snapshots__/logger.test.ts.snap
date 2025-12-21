@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Logger > error > should log error message 1`] = `
+exports[`Logger > error > should log error message to stderr 1`] = `
 [
   "✖",
   "Test error message",

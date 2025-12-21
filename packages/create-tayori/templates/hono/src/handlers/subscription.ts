@@ -48,7 +48,10 @@ export function subscriptionHandlers(router: StripeWebhookRouter) {
   router.on('customer.subscription.trial_will_end', async (event) => {
     const subscription = event.data.object;
     console.log(`⏰ Trial ending soon: ${subscription.id}`);
-    console.log(`   Trial ends: ${new Date(subscription.trial_end! * 1000)}`);
+
+    if (subscription.trial_end) {
+      console.log(`   Trial ends: ${new Date(subscription.trial_end * 1000)}`);
+    }
 
     // TODO: Remind customer about trial ending
     // - Send reminder email

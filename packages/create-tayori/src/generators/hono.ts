@@ -22,6 +22,7 @@ export async function generateHonoProject(
   logger.info('Copying template files...');
   await copyTemplate('hono', targetDir, {
     PROJECT_NAME: projectName,
+    PACKAGE_MANAGER: packageManager,
   });
 
   logger.success('Template files created');

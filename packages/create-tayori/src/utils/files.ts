@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,14 +14,10 @@ function getPackageRoot(): string {
 
   // Go up until we find package.json or reach root
   while (current !== path.dirname(current)) {
-    try {
-      // Check if templates directory exists here
-      const templatesPath = path.join(current, 'templates');
-      if (fs.existsSync(templatesPath)) {
-        return current;
-      }
-    } catch {
-      // Continue searching
+    // Check if templates directory exists here
+    const templatesPath = path.join(current, 'templates');
+    if (existsSync(templatesPath)) {
+      return current;
     }
     current = path.dirname(current);
   }

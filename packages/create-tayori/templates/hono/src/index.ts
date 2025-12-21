@@ -5,8 +5,16 @@ import { honoAdapter } from '@tayori/hono';
 import { paymentHandlers } from './handlers/payment.js';
 import { subscriptionHandlers } from './handlers/subscription.js';
 
+// Validate required environment variables
+if (!process.env.STRIPE_API_KEY) {
+  throw new Error('STRIPE_API_KEY environment variable is required');
+}
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  throw new Error('STRIPE_WEBHOOK_SECRET environment variable is required');
+}
+
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+const stripe = new Stripe(process.env.STRIPE_API_KEY);
 
 // Create webhook router
 const webhookRouter = new StripeWebhookRouter();
@@ -40,7 +48,7 @@ app.post(
   '/webhook',
   honoAdapter(webhookRouter, {
     stripe,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     onError: async (error, event) => {
       console.error(`Failed to process ${event.type}:`, error);
     },

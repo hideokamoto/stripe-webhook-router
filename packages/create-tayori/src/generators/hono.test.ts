@@ -63,6 +63,7 @@ describe('Hono Generator', () => {
 
       expect(copyTemplate).toHaveBeenCalledWith('hono', testDir, {
         PROJECT_NAME: 'test-project',
+        PACKAGE_MANAGER: 'pnpm',
       });
     });
 
@@ -154,6 +155,7 @@ describe('Hono Generator', () => {
 
         expect(copyTemplate).toHaveBeenCalledWith('hono', testDir, {
           PROJECT_NAME: name,
+          PACKAGE_MANAGER: 'pnpm',
         });
       }
     });

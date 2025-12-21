@@ -28,14 +28,6 @@ async function main() {
 
     const config = await promptForConfig(configInput);
 
-    // Validate framework support
-    if (config.framework !== 'hono') {
-      logger.error(
-        `Framework "${config.framework}" is not yet supported. Currently only "hono" is available.`
-      );
-      process.exit(1);
-    }
-
     // Determine target directory
     const targetDir = path.resolve(process.cwd(), config.projectName);
 
@@ -64,7 +56,9 @@ async function main() {
         });
         break;
       default:
-        logger.error(`Unsupported framework: ${config.framework}`);
+        logger.error(
+          `Framework "${config.framework}" is not yet supported. Currently only "hono" is available.`
+        );
         process.exit(1);
     }
   } catch (error) {
