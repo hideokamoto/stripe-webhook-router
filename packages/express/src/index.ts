@@ -8,7 +8,7 @@ export interface ExpressAdapterOptions<T extends WebhookEvent = WebhookEvent> {
   /** Webhook verifier function for signature validation and event parsing */
   verifier: Verifier<T>;
   /** Custom error handler */
-  onError?: (error: Error, event?: T) => Promise<void> | void;
+  onError?: (error: Error, event: T) => Promise<void> | void;
 }
 
 /**
