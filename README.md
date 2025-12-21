@@ -1,24 +1,24 @@
 # Tayori
 
-A Hono-inspired, type-safe Stripe webhook routing library for TypeScript.
+A Hono-inspired, type-safe webhook routing library for TypeScript.
 
 ## Overview
 
-Tayori provides a clean, type-safe API for handling Stripe webhooks with full TypeScript support. It features a modular architecture with adapters for popular frameworks and platforms.
+Tayori provides a clean, type-safe API for handling webhooks from any event source. It features a modular architecture with adapters for popular frameworks and platforms, and a pluggable verifier system for signature validation.
 
 ## Features
 
-- **Type-Safe**: Full TypeScript support with all 253+ Stripe event types
+- **Type-Safe**: Full TypeScript support with generic event type definitions
 - **Framework Adapters**: Built-in support for Hono, Express, AWS Lambda, and EventBridge
+- **Pluggable Verification**: Bring your own verifier for any webhook provider
 - **Middleware Support**: Add cross-cutting concerns with middleware
 - **Flexible Routing**: Group handlers, mount nested routers, and fanout patterns
-- **Event Validation**: Automatic Stripe signature verification
-- **Monorepo Architecture**: Modular packages for different use cases
+- **Stripe Support**: First-class support for all 253+ Stripe event types
 
 ## Packages
 
-- `@tayori/core` - Core webhook routing logic
-- `@tayori/stripe` - Stripe-specific type definitions and router
+- `@tayori/core` - Core webhook routing logic and Verifier type
+- `@tayori/stripe` - Stripe-specific type definitions, router, and verifier
 - `@tayori/hono` - Hono framework adapter
 - `@tayori/express` - Express framework adapter
 - `@tayori/lambda` - AWS Lambda adapter
@@ -27,27 +27,27 @@ Tayori provides a clean, type-safe API for handling Stripe webhooks with full Ty
 ## Installation
 
 ```bash
-# For Hono
+# For Stripe with Hono
 pnpm add @tayori/stripe @tayori/hono stripe
 
-# For Express
+# For Stripe with Express
 pnpm add @tayori/stripe @tayori/express stripe
 
-# For AWS Lambda
+# For Stripe with AWS Lambda
 pnpm add @tayori/stripe @tayori/lambda stripe
 
-# For AWS EventBridge
-pnpm add @tayori/stripe @tayori/eventbridge stripe
+# For custom webhooks (without Stripe)
+pnpm add @tayori/core @tayori/hono  # or @tayori/express, @tayori/lambda
 ```
 
-## Quick Start
+## Quick Start (Stripe)
 
 ### With Hono
 
 ```typescript
 import { Hono } from 'hono';
 import Stripe from 'stripe';
-import { StripeWebhookRouter } from '@tayori/stripe';
+import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
 import { honoAdapter } from '@tayori/hono';
 
 const stripe = new Stripe(process.env.STRIPE_API_KEY!);
@@ -65,8 +65,7 @@ router.on('customer.subscription.created', async (event) => {
 const app = new Hono();
 
 app.post('/webhook', honoAdapter(router, {
-  stripe,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+  verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
 }));
 
 export default app;
@@ -77,7 +76,7 @@ export default app;
 ```typescript
 import express from 'express';
 import Stripe from 'stripe';
-import { StripeWebhookRouter } from '@tayori/stripe';
+import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
 import { expressAdapter } from '@tayori/express';
 
 const stripe = new Stripe(process.env.STRIPE_API_KEY!);
@@ -92,8 +91,7 @@ const app = express();
 app.post('/webhook',
   express.raw({ type: 'application/json' }),
   expressAdapter(router, {
-    stripe,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+    verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
   })
 );
 
@@ -104,7 +102,7 @@ app.listen(3000);
 
 ```typescript
 import Stripe from 'stripe';
-import { StripeWebhookRouter } from '@tayori/stripe';
+import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
 import { lambdaAdapter } from '@tayori/lambda';
 
 const stripe = new Stripe(process.env.STRIPE_API_KEY!);
@@ -115,9 +113,90 @@ router.on('invoice.paid', async (event) => {
 });
 
 export const handler = lambdaAdapter(router, {
-  stripe,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+  verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
 });
+```
+
+## Custom Webhooks (Non-Stripe)
+
+Tayori can be used with any webhook provider by implementing a custom verifier.
+
+### Define Your Event Types
+
+```typescript
+import { WebhookRouter, type WebhookEvent, type Verifier } from '@tayori/core';
+
+// Define your event types
+interface GitHubPushEvent extends WebhookEvent {
+  type: 'push';
+  data: { object: { ref: string; commits: Array<{ message: string }> } };
+}
+
+interface GitHubPullRequestEvent extends WebhookEvent {
+  type: 'pull_request.opened' | 'pull_request.closed';
+  data: { object: { number: number; title: string } };
+}
+
+type GitHubEventMap = {
+  'push': GitHubPushEvent;
+  'pull_request.opened': GitHubPullRequestEvent;
+  'pull_request.closed': GitHubPullRequestEvent;
+};
+```
+
+### Create a Custom Verifier
+
+```typescript
+import crypto from 'crypto';
+
+function createGitHubVerifier(secret: string): Verifier {
+  return (payload, headers) => {
+    const signature = headers['x-hub-signature-256'];
+    if (!signature) {
+      throw new Error('Missing x-hub-signature-256 header');
+    }
+
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = 'sha256=' + hmac.update(payload).digest('hex');
+
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
+      throw new Error('Invalid signature');
+    }
+
+    const body = JSON.parse(payload.toString());
+    return {
+      event: {
+        id: headers['x-github-delivery'] ?? crypto.randomUUID(),
+        type: headers['x-github-event'] ?? 'unknown',
+        data: { object: body },
+      },
+    };
+  };
+}
+```
+
+### Use with an Adapter
+
+```typescript
+import { Hono } from 'hono';
+import { WebhookRouter } from '@tayori/core';
+import { honoAdapter } from '@tayori/hono';
+
+const router = new WebhookRouter<GitHubEventMap>();
+
+router.on('push', async (event) => {
+  console.log('Push to:', event.data.object.ref);
+});
+
+router.on('pull_request.opened', async (event) => {
+  console.log('PR opened:', event.data.object.title);
+});
+
+const app = new Hono();
+
+app.post('/github-webhook', honoAdapter(router, {
+  verifier: createGitHubVerifier(process.env.GITHUB_WEBHOOK_SECRET!),
+}));
 ```
 
 ## Advanced Usage
@@ -220,15 +299,14 @@ mainRouter.route('customer.subscription', subscriptionRouter);
 
 ```typescript
 app.post('/webhook', honoAdapter(router, {
-  stripe,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+  verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
   onError: async (error, event) => {
     // Log to monitoring service
-    console.error(`Failed to process ${event.type}:`, error);
+    console.error(`Failed to process ${event?.type}:`, error);
 
     // Send to error tracking
     await Sentry.captureException(error, {
-      tags: { eventType: event.type, eventId: event.id },
+      tags: { eventType: event?.type, eventId: event?.id },
     });
   },
 }));
@@ -277,8 +355,8 @@ pnpm lint
 ```
 tayori/
 ├── packages/
-│   ├── core/          # Core routing logic
-│   ├── stripe/        # Stripe type definitions
+│   ├── core/          # Core routing logic and Verifier type
+│   ├── stripe/        # Stripe type definitions and verifier
 │   ├── hono/          # Hono adapter
 │   ├── express/       # Express adapter
 │   ├── lambda/        # AWS Lambda adapter
@@ -302,7 +380,7 @@ See [MAINTAINING_STRIPE_EVENTMAP.md](packages/stripe/MAINTAINING_STRIPE_EVENTMAP
 
 - Node.js >= 18
 - TypeScript >= 5.3
-- Stripe SDK >= 17.0.0
+- Stripe SDK >= 17.0.0 (for `@tayori/stripe`)
 
 ## License
 

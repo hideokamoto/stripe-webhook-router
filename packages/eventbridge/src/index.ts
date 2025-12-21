@@ -10,7 +10,7 @@ export interface EventBridgeAdapterOptions {
 }
 
 /**
- * Creates an AWS Lambda handler for processing Stripe events from EventBridge
+ * Creates an AWS Lambda handler for processing webhook events from EventBridge
  *
  * Note: EventBridge events don't require signature verification as AWS
  * guarantees the authenticity of events delivered through EventBridge.
@@ -27,7 +27,7 @@ export function eventBridgeAdapter<TEventMap extends Record<string, WebhookEvent
     eventBridgeEvent: EventBridgeEvent<string, unknown>,
     _context: Context
   ): Promise<void> => {
-    // Extract the Stripe event from the EventBridge detail
+    // Extract the webhook event from the EventBridge detail
     const webhookEvent = eventBridgeEvent.detail as WebhookEvent;
 
     try {
@@ -45,4 +45,4 @@ export function eventBridgeAdapter<TEventMap extends Record<string, WebhookEvent
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware, type Verifier, type VerifyResult } from '@tayori/core';

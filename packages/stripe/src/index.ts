@@ -366,11 +366,73 @@ export type StripeEventType<T extends StripeEventName> = StripeEventMap[T];
 export type { Stripe };
 
 // Re-export core types and classes
-import { WebhookRouter, type WebhookEvent, type EventHandler } from '@tayori/core';
-export { WebhookRouter, type WebhookEvent, type EventHandler };
+import { WebhookRouter, type WebhookEvent, type EventHandler, type Verifier, type VerifyResult } from '@tayori/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Verifier, type VerifyResult };
 
 /**
  * Type-safe Stripe Webhook Router
  * Uses Stripe's event types for full type inference
  */
 export class StripeWebhookRouter extends WebhookRouter<StripeEventMap> {}
+
+/**
+ * Creates a Stripe webhook verifier function
+ *
+ * This verifier handles Stripe signature verification using the stripe-signature header
+ * and returns the verified Stripe event.
+ *
+ * @param stripe - Pre-configured Stripe instance
+ * @param webhookSecret - Stripe webhook secret (starts with 'whsec_')
+ * @returns A Verifier function compatible with all Tayori adapters
+ *
+ * @example
+ * ```typescript
+ * import Stripe from 'stripe';
+ * import { createStripeVerifier, StripeWebhookRouter } from '@tayori/stripe';
+ * import { honoAdapter } from '@tayori/hono';
+ *
+ * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+ * const router = new StripeWebhookRouter();
+ *
+ * // With Hono
+ * app.post('/webhook', honoAdapter(router, {
+ *   verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
+ * }));
+ *
+ * // With Express
+ * app.post('/webhook',
+ *   express.raw({ type: 'application/json' }),
+ *   expressAdapter(router, {
+ *     verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
+ *   })
+ * );
+ *
+ * // With Lambda
+ * export const handler = lambdaAdapter(router, {
+ *   verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
+ * });
+ * ```
+ */
+export function createStripeVerifier(
+  stripe: Stripe,
+  webhookSecret: string
+): Verifier<Stripe.Event> {
+  return (
+    payload: string | Buffer,
+    headers: Record<string, string | undefined>
+  ): VerifyResult<Stripe.Event> => {
+    const signature = headers['stripe-signature'];
+
+    if (!signature) {
+      throw new Error('Missing stripe-signature header');
+    }
+
+    const event = stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      webhookSecret
+    );
+
+    return { event };
+  };
+}

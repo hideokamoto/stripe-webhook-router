@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { lambdaAdapter } from '../src/index.js';
-import { WebhookRouter } from '@tayori/core';
-import type Stripe from 'stripe';
+import { WebhookRouter, type Verifier, type WebhookEvent } from '@tayori/core';
 
 describe('lambdaAdapter', () => {
   let mockEvent: Partial<APIGatewayProxyEvent>;
   let mockContext: Context;
   let router: WebhookRouter;
-  let mockStripe: Stripe;
+  let mockVerifier: Verifier<WebhookEvent>;
 
   const testEvent = {
     id: 'evt_123',
@@ -42,18 +41,13 @@ describe('lambdaAdapter', () => {
 
     router = new WebhookRouter();
 
-    // Create mock Stripe instance with constructEvent
-    mockStripe = {
-      webhooks: {
-        constructEvent: vi.fn().mockReturnValue(testEvent),
-      },
-    } as unknown as Stripe;
+    // Create mock verifier
+    mockVerifier = vi.fn().mockReturnValue({ event: testEvent });
   });
 
   it('should return a Lambda handler function', () => {
     const handler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     expect(typeof handler).toBe('function');
@@ -64,16 +58,16 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
 
-    expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+    expect(mockVerifier).toHaveBeenCalledWith(
       JSON.stringify(testEvent),
-      'test_signature',
-      'whsec_test'
+      expect.objectContaining({
+        'stripe-signature': 'test_signature',
+      })
     );
     expect(handler).toHaveBeenCalledOnce();
     expect(result.statusCode).toBe(200);
@@ -84,8 +78,7 @@ describe('lambdaAdapter', () => {
     mockEvent.body = null;
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
@@ -94,28 +87,13 @@ describe('lambdaAdapter', () => {
     expect(JSON.parse(result.body)).toHaveProperty('error');
   });
 
-  it('should return 400 when signature is missing', async () => {
-    mockEvent.headers = {};
-
-    const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
-    });
-
-    const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
-
-    expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toHaveProperty('error');
-  });
-
-  it('should return 400 when signature verification fails', async () => {
-    (mockStripe.webhooks.constructEvent as ReturnType<typeof vi.fn>).mockImplementation(() => {
+  it('should return 400 when verifier throws', async () => {
+    (mockVerifier as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error('Invalid signature');
     });
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
@@ -132,16 +110,14 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
 
-    expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+    expect(mockVerifier).toHaveBeenCalledWith(
       JSON.stringify(testEvent), // Decoded from base64
-      'test_signature',
-      'whsec_test'
+      expect.any(Object)
     );
     expect(handler).toHaveBeenCalledOnce();
     expect(result.statusCode).toBe(200);
@@ -152,8 +128,7 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
     });
 
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
@@ -168,8 +143,7 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 
@@ -187,8 +161,7 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 
@@ -204,8 +177,7 @@ describe('lambdaAdapter', () => {
     router.on('payment_intent.succeeded', handler);
 
     const lambdaHandler = lambdaAdapter(router, {
-      stripe: mockStripe,
-      webhookSecret: 'whsec_test',
+      verifier: mockVerifier,
       onError,
     });
 

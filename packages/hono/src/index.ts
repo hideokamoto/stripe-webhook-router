@@ -1,21 +1,18 @@
 import type { Context } from 'hono';
-import type { WebhookRouter, WebhookEvent } from '@tayori/core';
-import type Stripe from 'stripe';
+import type { WebhookRouter, WebhookEvent, Verifier } from '@tayori/core';
 
 /**
  * Options for the Hono adapter
  */
-export interface HonoAdapterOptions {
-  /** Pre-configured Stripe instance */
-  stripe: Stripe;
-  /** Stripe webhook secret for signature verification */
-  webhookSecret: string;
+export interface HonoAdapterOptions<T extends WebhookEvent = WebhookEvent> {
+  /** Webhook verifier function for signature validation and event parsing */
+  verifier: Verifier<T>;
   /** Custom error handler */
-  onError?: (error: Error, event: WebhookEvent) => Promise<void> | void;
+  onError?: (error: Error, event?: T) => Promise<void> | void;
 }
 
 /**
- * Creates a Hono handler for handling Stripe webhooks
+ * Creates a Hono handler for handling webhooks
  *
  * Hono's `c.req.text()` retrieves the raw request body as a string,
  * which is used directly for signature verification.
@@ -23,28 +20,26 @@ export interface HonoAdapterOptions {
  * @example
  * ```typescript
  * import { Hono } from 'hono';
- * import Stripe from 'stripe';
  * import { honoAdapter } from '@tayori/hono';
+ * import { createStripeVerifier, StripeWebhookRouter } from '@tayori/stripe';
  *
- * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
- * const router = new WebhookRouter();
+ * const router = new StripeWebhookRouter();
  * const app = new Hono();
  *
  * app.post('/webhook', honoAdapter(router, {
- *   stripe,
- *   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+ *   verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
  * }));
  * ```
  *
  * @param router - The WebhookRouter instance
- * @param options - Adapter options including a pre-configured Stripe instance
+ * @param options - Adapter options including a verifier function
  * @returns Hono handler function
  */
 export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
   router: WebhookRouter<TEventMap>,
-  options: HonoAdapterOptions
+  options: HonoAdapterOptions<TEventMap[keyof TEventMap]>
 ): (c: Context) => Promise<Response> {
-  const { stripe, webhookSecret, onError } = options;
+  const { verifier, onError } = options;
 
   return async (c: Context): Promise<Response> => {
     // Get raw body text for signature verification
@@ -54,24 +49,20 @@ export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
       return c.json({ error: 'Request body is required' }, 400);
     }
 
-    // Validate signature header
-    const signature = c.req.header('stripe-signature');
+    // Collect headers for verifier
+    const headers: Record<string, string | undefined> = {};
+    c.req.raw.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
 
-    if (!signature) {
-      return c.json({ error: 'Missing stripe-signature header' }, 400);
-    }
+    let webhookEvent: TEventMap[keyof TEventMap];
 
-    let webhookEvent: WebhookEvent;
-
-    // Verify signature
+    // Verify signature and parse event
     try {
-      webhookEvent = stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret
-      ) as unknown as WebhookEvent;
+      const result = await verifier(rawBody, headers);
+      webhookEvent = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Signature verification failed';
+      const message = err instanceof Error ? err.message : 'Verification failed';
       return c.json({ error: message }, 400);
     }
 
@@ -96,4 +87,4 @@ export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware, type Verifier, type VerifyResult } from '@tayori/core';

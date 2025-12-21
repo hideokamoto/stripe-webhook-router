@@ -1,49 +1,48 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { WebhookRouter, WebhookEvent } from '@tayori/core';
-import type Stripe from 'stripe';
+import type { WebhookRouter, WebhookEvent, Verifier } from '@tayori/core';
 
 /**
  * Options for the Express adapter
  */
-export interface ExpressAdapterOptions {
-  /** Pre-configured Stripe instance */
-  stripe: Stripe;
-  /** Stripe webhook secret for signature verification */
-  webhookSecret: string;
+export interface ExpressAdapterOptions<T extends WebhookEvent = WebhookEvent> {
+  /** Webhook verifier function for signature validation and event parsing */
+  verifier: Verifier<T>;
   /** Custom error handler */
-  onError?: (error: Error, event: WebhookEvent) => Promise<void> | void;
+  onError?: (error: Error, event: T) => Promise<void> | void;
 }
 
 /**
- * Creates an Express middleware for handling Stripe webhooks
+ * Creates an Express middleware for handling webhooks
  *
- * IMPORTANT: This adapter requires `req.body` to be a raw Buffer.
+ * IMPORTANT: This adapter requires `req.body` to be a raw Buffer or string.
  * Use `express.raw({ type: 'application/json' })` middleware on your webhook route.
  *
  * @example
  * ```typescript
  * import express from 'express';
- * import Stripe from 'stripe';
  * import { expressAdapter } from '@tayori/express';
+ * import { createStripeVerifier, StripeWebhookRouter } from '@tayori/stripe';
  *
- * const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+ * const router = new StripeWebhookRouter();
  * const app = express();
  *
  * app.post('/webhook',
  *   express.raw({ type: 'application/json' }),
- *   expressAdapter(router, { stripe, webhookSecret: 'whsec_...' })
+ *   expressAdapter(router, {
+ *     verifier: createStripeVerifier(stripe, 'whsec_...'),
+ *   })
  * );
  * ```
  *
  * @param router - The WebhookRouter instance
- * @param options - Adapter options including a pre-configured Stripe instance
+ * @param options - Adapter options including a verifier function
  * @returns Express middleware function
  */
 export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
   router: WebhookRouter<TEventMap>,
-  options: ExpressAdapterOptions
+  options: ExpressAdapterOptions<TEventMap[keyof TEventMap]>
 ): (req: Request, res: Response, next: NextFunction) => Promise<void> {
-  const { stripe, webhookSecret, onError } = options;
+  const { verifier, onError } = options;
 
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     // Validate request body exists
@@ -52,32 +51,33 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
       return;
     }
 
-    // Require raw Buffer body for reliable signature verification
-    if (!Buffer.isBuffer(req.body)) {
+    // Get raw body (Buffer or string)
+    let rawBody: string | Buffer;
+    if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body;
+    } else if (typeof req.body === 'string') {
+      rawBody = req.body;
+    } else {
       res.status(400).json({
-        error: 'Request body must be a raw Buffer. Use express.raw({ type: "application/json" }) middleware.',
+        error: 'Request body must be a raw Buffer or string. Use express.raw({ type: "application/json" }) middleware.',
       });
       return;
     }
 
-    // Validate signature header
-    const signature = req.headers['stripe-signature'];
-    if (!signature || typeof signature !== 'string') {
-      res.status(400).json({ error: 'Missing stripe-signature header' });
-      return;
+    // Collect headers for verifier
+    const headers: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      headers[key.toLowerCase()] = Array.isArray(value) ? value[0] : value;
     }
 
-    let event: WebhookEvent;
+    let event: TEventMap[keyof TEventMap];
 
-    // Verify signature
+    // Verify signature and parse event
     try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        signature,
-        webhookSecret
-      ) as unknown as WebhookEvent;
+      const result = await verifier(rawBody, headers);
+      event = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Signature verification failed';
+      const message = err instanceof Error ? err.message : 'Verification failed';
       res.status(400).json({ error: message });
       return;
     }
@@ -103,4 +103,4 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
 }
 
 // Re-export core types
-export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware } from '@tayori/core';
+export { WebhookRouter, type WebhookEvent, type EventHandler, type Middleware, type Verifier, type VerifyResult } from '@tayori/core';

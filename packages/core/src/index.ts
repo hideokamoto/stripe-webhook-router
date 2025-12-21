@@ -26,6 +26,48 @@ export type Middleware<T extends WebhookEvent = WebhookEvent> = (
 ) => Promise<void>;
 
 /**
+ * Webhook verification result
+ */
+export interface VerifyResult<T extends WebhookEvent = WebhookEvent> {
+  /** The verified webhook event */
+  event: T;
+}
+
+/**
+ * Webhook verifier function type
+ *
+ * A verifier is responsible for:
+ * 1. Validating the webhook signature/authenticity
+ * 2. Parsing the payload into a typed event object
+ *
+ * @param payload - Raw request body (string or Buffer)
+ * @param headers - Request headers for signature verification
+ * @returns The verified event wrapped in a VerifyResult
+ * @throws Error if verification fails
+ *
+ * @example
+ * ```typescript
+ * // Stripe verifier
+ * const verifier: Verifier = (payload, headers) => {
+ *   const signature = headers['stripe-signature'];
+ *   const event = stripe.webhooks.constructEvent(payload, signature, secret);
+ *   return { event };
+ * };
+ *
+ * // GitHub verifier
+ * const verifier: Verifier = (payload, headers) => {
+ *   const signature = headers['x-hub-signature-256'];
+ *   // Verify HMAC signature...
+ *   return { event: JSON.parse(payload) };
+ * };
+ * ```
+ */
+export type Verifier<T extends WebhookEvent = WebhookEvent> = (
+  payload: string | Buffer,
+  headers: Record<string, string | undefined>
+) => VerifyResult<T> | Promise<VerifyResult<T>>;
+
+/**
  * Fanout strategy options
  */
 export type FanoutStrategy = 'all-or-nothing' | 'best-effort';
