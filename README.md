@@ -23,6 +23,27 @@ Tayori provides a clean, type-safe API for handling webhooks from any event sour
 - `@tayori/express` - Express framework adapter
 - `@tayori/lambda` - AWS Lambda adapter
 - `@tayori/eventbridge` - AWS EventBridge adapter
+- `create-tayori` - Scaffolding tool for creating new projects
+
+## Getting Started
+
+The fastest way to get started is using the scaffolding tool:
+
+```bash
+npx create-tayori
+```
+
+This will interactively guide you through creating a new Tayori project with your preferred framework and package manager.
+
+You can also specify options directly:
+
+```bash
+# Create a new Hono-based webhook handler
+npx create-tayori my-webhook-handler --fw=hono
+
+# With custom package manager
+npx create-tayori my-webhook-handler --fw=hono --pm=pnpm
+```
 
 ## Installation
 
