@@ -439,11 +439,12 @@ describe('WebhookRouter', () => {
       expect(handler2).toHaveBeenCalledOnce();
       expect(handler3).toHaveBeenCalledOnce();
 
-      // handler2 and handler3 should complete before handler1 (due to delay)
-      // This verifies parallel execution
-      expect(order).toContain('handler1');
-      expect(order).toContain('handler2');
-      expect(order).toContain('handler3');
+      // Verify parallel execution: handler2 and handler3 complete before handler1
+      // because handler1 has a 10ms delay
+      expect(order).toHaveLength(3);
+      expect(order[2]).toBe('handler1'); // handler1 completes last due to delay
+      expect(order.slice(0, 2)).toContain('handler2');
+      expect(order.slice(0, 2)).toContain('handler3');
     });
 
     it('should handle errors in fanout with all-or-nothing strategy', async () => {

@@ -174,6 +174,12 @@ describe('eventBridgeAdapter', () => {
 
       const lambdaHandler = eventBridgeAdapter(router, { onError });
 
+      const webhookEvent = {
+        id: 'evt_str_err',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_str_err' } },
+      };
+
       const event: EventBridgeEvent<string, unknown> = {
         version: '0',
         id: 'evt_str_err',
@@ -183,17 +189,13 @@ describe('eventBridgeAdapter', () => {
         time: '2021-01-01T00:00:00Z',
         region: 'us-east-1',
         resources: [],
-        detail: {
-          id: 'evt_str_err',
-          type: 'payment_intent.succeeded',
-          data: { object: { id: 'pi_str_err' } },
-        },
+        detail: webhookEvent,
       };
 
       await expect(lambdaHandler(event, mockContext)).rejects.toThrow('string error');
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'string error' }),
-        expect.any(Object)
+        webhookEvent
       );
     });
 
