@@ -439,11 +439,12 @@ describe('WebhookRouter', () => {
       expect(handler2).toHaveBeenCalledOnce();
       expect(handler3).toHaveBeenCalledOnce();
 
-      // handler2 and handler3 should complete before handler1 (due to delay)
-      // This verifies parallel execution
-      expect(order).toContain('handler1');
-      expect(order).toContain('handler2');
-      expect(order).toContain('handler3');
+      // Verify parallel execution: handler2 and handler3 complete before handler1
+      // because handler1 has a 10ms delay
+      expect(order).toHaveLength(3);
+      expect(order[2]).toBe('handler1'); // handler1 completes last due to delay
+      expect(order.slice(0, 2)).toContain('handler2');
+      expect(order.slice(0, 2)).toContain('handler3');
     });
 
     it('should handle errors in fanout with all-or-nothing strategy', async () => {
@@ -506,6 +507,389 @@ describe('WebhookRouter', () => {
         .fanout('payment_intent.canceled', [handler]);
 
       expect(result).toBe(router);
+    });
+
+    it('should handle empty handlers array', async () => {
+      const router = new WebhookRouter();
+
+      router.fanout('payment_intent.succeeded', []);
+
+      const event = {
+        id: 'evt_empty',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_empty' } },
+      };
+
+      // Should not throw with empty handlers
+      await expect(router.dispatch(event)).resolves.toBeUndefined();
+    });
+
+    it('should handle fanout with all-or-nothing strategy on error', async () => {
+      const router = new WebhookRouter();
+
+      const handler1 = vi.fn().mockResolvedValue(undefined);
+      const handler2 = vi.fn().mockRejectedValue(new Error('Fanout error'));
+
+      router.fanout('payment_intent.succeeded', [handler1, handler2], {
+        strategy: 'all-or-nothing',
+      });
+
+      const event = {
+        id: 'evt_fanout_err',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_fanout_err' } },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow('Fanout error');
+    });
+
+    it('should handle non-Error objects in fanout with best-effort strategy', async () => {
+      const router = new WebhookRouter();
+      const errors: Error[] = [];
+
+      const handler1 = vi.fn().mockResolvedValue(undefined);
+      const handler2 = vi.fn().mockRejectedValue('string error');
+
+      router.fanout('payment_intent.succeeded', [handler1, handler2], {
+        strategy: 'best-effort',
+        onError: (error) => errors.push(error),
+      });
+
+      const event = {
+        id: 'evt_str_err',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_str_err' } },
+      };
+
+      await router.dispatch(event);
+
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toBe('string error');
+    });
+  });
+
+  describe('error handling', () => {
+    it('should propagate handler errors', async () => {
+      const router = new WebhookRouter();
+      const errorMessage = 'Handler failed unexpectedly';
+
+      router.on('test.event', async () => {
+        throw new Error(errorMessage);
+      });
+
+      const event = {
+        id: 'evt_err',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(errorMessage);
+    });
+
+    it('should propagate middleware errors', async () => {
+      const router = new WebhookRouter();
+      const errorMessage = 'Middleware failed';
+
+      router.use(async () => {
+        throw new Error(errorMessage);
+      });
+
+      router.on('test.event', vi.fn());
+
+      const event = {
+        id: 'evt_mw_err',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(errorMessage);
+    });
+
+    it('should propagate errors from nested router handlers', async () => {
+      const router = new WebhookRouter();
+      const nested = new WebhookRouter();
+      const errorMessage = 'Nested handler error';
+
+      nested.on('created', async () => {
+        throw new Error(errorMessage);
+      });
+
+      router.route('customer', nested);
+
+      const event = {
+        id: 'evt_nested_err',
+        type: 'customer.created',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(errorMessage);
+    });
+
+    it('should handle errors in group handlers', async () => {
+      const router = new WebhookRouter();
+      const errorMessage = 'Group handler error';
+
+      router.group('invoice', (group) => {
+        group.on('paid', async () => {
+          throw new Error(errorMessage);
+        });
+      });
+
+      const event = {
+        id: 'evt_group_err',
+        type: 'invoice.paid',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(errorMessage);
+    });
+
+    it('should only call handlers before error occurs', async () => {
+      const router = new WebhookRouter();
+      const order: number[] = [];
+
+      router.on('test.event', async () => { order.push(1); });
+      router.on('test.event', async () => { throw new Error('Second handler failed'); });
+      router.on('test.event', async () => { order.push(3); });
+
+      const event = {
+        id: 'evt_partial',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow('Second handler failed');
+      expect(order).toEqual([1]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty event id', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.on('test.event', handler);
+
+      const event = {
+        id: '',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalledWith(event);
+    });
+
+    it('should handle event with null data object', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.on('test.event', handler);
+
+      const event = {
+        id: 'evt_null_data',
+        type: 'test.event',
+        data: { object: null },
+      };
+
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalledWith(event);
+    });
+
+    it('should handle deeply nested router structure', async () => {
+      const router = new WebhookRouter();
+      const level1 = new WebhookRouter();
+      const level2 = new WebhookRouter();
+
+      const handler = vi.fn().mockResolvedValue(undefined);
+      level2.on('event', handler);
+      level1.route('level2', level2);
+      router.route('level1', level1);
+
+      const event = {
+        id: 'evt_deep',
+        type: 'level1.level2.event',
+        data: { object: {} },
+      };
+
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it('should handle on() with empty array', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      // Empty array should register nothing
+      router.on([], handler);
+
+      const event = {
+        id: 'evt_empty_arr',
+        type: 'any.event',
+        data: { object: {} },
+      };
+
+      await router.dispatch(event);
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('should handle multiple middlewares with errors after first completes', async () => {
+      const router = new WebhookRouter();
+      const order: string[] = [];
+
+      router.use(async (_event, next) => {
+        order.push('mw1-before');
+        await next();
+        order.push('mw1-after');
+      });
+
+      router.use(async () => {
+        order.push('mw2-before');
+        throw new Error('Middleware 2 failed');
+      });
+
+      router.on('test.event', async () => {
+        order.push('handler');
+      });
+
+      const event = {
+        id: 'evt_mw_chain_err',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow('Middleware 2 failed');
+      expect(order).toEqual(['mw1-before', 'mw2-before']);
+    });
+
+    it('should handle same handler registered for multiple events', async () => {
+      const router = new WebhookRouter();
+      const sharedHandler = vi.fn().mockResolvedValue(undefined);
+
+      router.on('event.a', sharedHandler);
+      router.on('event.b', sharedHandler);
+
+      await router.dispatch({
+        id: 'evt_a',
+        type: 'event.a',
+        data: { object: {} },
+      });
+
+      await router.dispatch({
+        id: 'evt_b',
+        type: 'event.b',
+        data: { object: {} },
+      });
+
+      expect(sharedHandler).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle event type with special characters', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.on('event_with.special-chars_123', handler);
+
+      const event = {
+        id: 'evt_special',
+        type: 'event_with.special-chars_123',
+        data: { object: {} },
+      };
+
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it('should handle concurrent dispatch calls', async () => {
+      const router = new WebhookRouter();
+      const results: string[] = [];
+
+      router.on('async.event', async (event) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        results.push(event.id);
+      });
+
+      const events = [
+        { id: 'evt_1', type: 'async.event', data: { object: {} } },
+        { id: 'evt_2', type: 'async.event', data: { object: {} } },
+        { id: 'evt_3', type: 'async.event', data: { object: {} } },
+      ];
+
+      await Promise.all(events.map((e) => router.dispatch(e)));
+
+      expect(results).toHaveLength(3);
+      expect(results).toContain('evt_1');
+      expect(results).toContain('evt_2');
+      expect(results).toContain('evt_3');
+    });
+  });
+
+  describe('PrefixedRouter via group()', () => {
+    it('should support use() on prefixed router', async () => {
+      const router = new WebhookRouter();
+      const order: string[] = [];
+
+      router.group('payment', (group) => {
+        group.use(async (_event, next) => {
+          order.push('group-middleware');
+          await next();
+        });
+        group.on('received', async () => {
+          order.push('handler');
+        });
+      });
+
+      // Note: middleware from group() is added to parent router
+      const event = {
+        id: 'evt_prefixed_mw',
+        type: 'payment.received',
+        data: { object: {} },
+      };
+
+      await router.dispatch(event);
+
+      expect(order).toContain('group-middleware');
+      expect(order).toContain('handler');
+    });
+
+    it('should support array syntax in prefixed router', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.group('transfer', (group) => {
+        group.on(['created', 'updated'], handler);
+      });
+
+      await router.dispatch({
+        id: 'evt_1',
+        type: 'transfer.created',
+        data: { object: {} },
+      });
+
+      await router.dispatch({
+        id: 'evt_2',
+        type: 'transfer.updated',
+        data: { object: {} },
+      });
+
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it('should support chaining in prefixed router', () => {
+      const router = new WebhookRouter();
+
+      router.group('payout', (group) => {
+        const result = group
+          .on('created', vi.fn())
+          .on('paid', vi.fn());
+
+        expect(result).toBe(group);
+      });
     });
   });
 });
