@@ -9,6 +9,7 @@ import {
   withValidation,
   createZodVerifier,
   WebhookValidationError,
+  UnknownEventTypeError,
   type InferEventMap,
   type InferEventType,
 } from '../src/index.js';
@@ -297,6 +298,73 @@ describe('withValidation middleware', () => {
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0][0]).toBeInstanceOf(WebhookValidationError);
   });
+
+  it('throws UnknownEventTypeError when allowUnknownEvents is false', async () => {
+    const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { allowUnknownEvents: false }))
+      .on('unknown.event', handler);
+
+    await expect(
+      router.dispatch({
+        id: 'evt_123',
+        type: 'unknown.event',
+        data: { object: {} },
+      })
+    ).rejects.toThrow(UnknownEventTypeError);
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('calls onError handler for unknown events when allowUnknownEvents is false', async () => {
+    const registry = new SchemaRegistry();
+
+    const onError = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { allowUnknownEvents: false, onError }))
+      .on('unknown.event', vi.fn());
+
+    await expect(
+      router.dispatch({
+        id: 'evt_123',
+        type: 'unknown.event',
+        data: { object: {} },
+      })
+    ).rejects.toThrow(UnknownEventTypeError);
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(UnknownEventTypeError);
+  });
+
+  it('propagates validated/transformed event data to handlers', async () => {
+    // Schema with transformation: adds a default value
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({
+        id: z.number(),
+        priority: z.number().default(5),
+      })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch({
+      id: 'evt_123',
+      type: 'issue.opened',
+      data: { object: { id: 1 } }, // No priority provided
+    });
+
+    expect(handler).toHaveBeenCalledOnce();
+    const receivedEvent = handler.mock.calls[0][0];
+    expect(receivedEvent.data.object.priority).toBe(5); // Default value applied
+  });
 });
 
 describe('createZodVerifier', () => {
@@ -360,6 +428,27 @@ describe('createZodVerifier', () => {
 
     const result = await verifier('payload', {});
     expect(result.event.type).toBe('unknown.event');
+  });
+
+  it('throws UnknownEventTypeError when allowUnknownEvents is false', async () => {
+    const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const mockVerifier = vi.fn().mockResolvedValue({
+      event: {
+        id: 'evt_123',
+        type: 'unknown.event',
+        data: { object: {} },
+      },
+    });
+
+    const verifier = createZodVerifier({
+      verifier: mockVerifier,
+      registry,
+      allowUnknownEvents: false,
+    });
+
+    await expect(verifier('payload', {})).rejects.toThrow(UnknownEventTypeError);
   });
 });
 

@@ -34,8 +34,9 @@ export function createEventSchema<
   TType extends string,
   TDataObject extends z.ZodTypeAny,
 >(type: TType, dataObjectSchema: TDataObject) {
+  // Use baseEventSchema.shape.id to keep the id definition DRY
   return z.object({
-    id: z.string(),
+    id: baseEventSchema.shape.id,
     type: z.literal(type),
     data: z.object({
       object: dataObjectSchema,
@@ -186,6 +187,16 @@ export class WebhookValidationError extends Error {
 }
 
 /**
+ * Error thrown when an unregistered event type is received and allowUnknownEvents is false
+ */
+export class UnknownEventTypeError extends Error {
+  constructor(public readonly eventType: string) {
+    super(`Unknown event type: "${eventType}"`);
+    this.name = 'UnknownEventTypeError';
+  }
+}
+
+/**
  * Options for validation middleware
  */
 export interface ValidationMiddlewareOptions {
@@ -196,9 +207,9 @@ export interface ValidationMiddlewareOptions {
   allowUnknownEvents?: boolean;
 
   /**
-   * Custom error handler
+   * Custom error handler for validation or unknown event errors
    */
-  onError?: (error: WebhookValidationError) => void | Promise<void>;
+  onError?: (error: WebhookValidationError | UnknownEventTypeError) => void | Promise<void>;
 }
 
 /**
@@ -227,7 +238,15 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
   const { allowUnknownEvents = true, onError } = options;
 
   return async (event, next) => {
-    if (!registry.has(event.type) && allowUnknownEvents) {
+    // Reject unregistered events when allowUnknownEvents is false
+    if (!registry.has(event.type)) {
+      if (!allowUnknownEvents) {
+        const error = new UnknownEventTypeError(event.type);
+        if (onError) {
+          await onError(error);
+        }
+        throw error;
+      }
       return next();
     }
 
@@ -246,6 +265,14 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
 
       throw error;
     }
+
+    // Propagate validated/transformed data by mutating the original event object
+    // This ensures transformations, defaults, and stripped keys are reflected
+    const validatedEvent = result.data;
+    for (const key of Object.keys(event) as Array<keyof typeof event>) {
+      delete event[key];
+    }
+    Object.assign(event, validatedEvent);
 
     return next();
   };
@@ -300,8 +327,11 @@ export function createZodVerifier<T extends WebhookEvent>(
     // First, verify signature and parse event
     const result = await verifier(payload, headers);
 
-    // Then validate with Zod if schema exists
-    if (!registry.has(result.event.type) && allowUnknownEvents) {
+    // Reject unregistered events when allowUnknownEvents is false
+    if (!registry.has(result.event.type)) {
+      if (!allowUnknownEvents) {
+        throw new UnknownEventTypeError(result.event.type);
+      }
       return result;
     }
 
