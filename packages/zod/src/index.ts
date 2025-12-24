@@ -2,6 +2,13 @@ import type { WebhookEvent, Middleware, Verifier, VerifyResult } from '@tayori/c
 import { z } from 'zod';
 
 /**
+ * Safe parse result type (Zod v4 compatible)
+ */
+export type SafeParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: z.ZodError };
+
+/**
  * Base Zod schema for webhook events
  */
 export const baseEventSchema = z.object({
@@ -157,18 +164,22 @@ export class SchemaRegistry<TEventMap extends Record<string, WebhookEvent> = Rec
     if (!schema) {
       return event; // No schema registered, pass through
     }
-    return schema.parse(event);
+    return schema.parse(event) as WebhookEvent;
   }
 
   /**
    * Safely validate an event, returning a result object
    */
-  safeParse(event: WebhookEvent): z.SafeParseReturnType<WebhookEvent, WebhookEvent> {
+  safeParse(event: WebhookEvent): SafeParseResult<WebhookEvent> {
     const schema = this.schemas.get(event.type);
     if (!schema) {
       return { success: true, data: event };
     }
-    return schema.safeParse(event);
+    const result = schema.safeParse(event);
+    if (result.success) {
+      return { success: true, data: result.data as WebhookEvent };
+    }
+    return { success: false, error: result.error };
   }
 }
 
