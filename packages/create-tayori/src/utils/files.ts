@@ -67,7 +67,7 @@ async function copyDir(
 
 export async function writeJson(
   filePath: string,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(data, null, 2) + '\n');
 }
