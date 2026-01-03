@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { logger } from './logger.js';
 
 describe('Logger', () => {
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleLogSpy: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleErrorSpy: any;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -65,28 +67,28 @@ describe('Logger', () => {
     it('should include the message text in info', () => {
       logger.info('Custom info text');
 
-      const lastCall = consoleLogSpy.mock.calls[0];
+      const lastCall = consoleLogSpy.mock.calls[0]!;
       expect(lastCall.join(' ')).toContain('Custom info text');
     });
 
     it('should include the message text in success', () => {
       logger.success('Operation completed');
 
-      const lastCall = consoleLogSpy.mock.calls[0];
+      const lastCall = consoleLogSpy.mock.calls[0]!;
       expect(lastCall.join(' ')).toContain('Operation completed');
     });
 
     it('should include the message text in warn', () => {
       logger.warn('Warning: deprecated');
 
-      const lastCall = consoleLogSpy.mock.calls[0];
+      const lastCall = consoleLogSpy.mock.calls[0]!;
       expect(lastCall.join(' ')).toContain('Warning: deprecated');
     });
 
     it('should include the message text in error', () => {
       logger.error('Error occurred');
 
-      const lastCall = consoleErrorSpy.mock.calls[0];
+      const lastCall = consoleErrorSpy.mock.calls[0]!;
       expect(lastCall.join(' ')).toContain('Error occurred');
     });
   });

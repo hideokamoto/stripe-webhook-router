@@ -162,7 +162,8 @@ describe('Hono Generator', () => {
   });
 
   describe('Console output', () => {
-    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let consoleLogSpy: any;
 
     beforeEach(() => {
       consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -180,7 +181,7 @@ describe('Hono Generator', () => {
         shouldInstall: false,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: any) => c.join(' ')).join('\n');
 
       expect(output).toContain('Next steps:');
       expect(output).toContain('pnpm install');
@@ -197,7 +198,7 @@ describe('Hono Generator', () => {
         shouldInstall: true,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: any) => c.join(' ')).join('\n');
 
       // Should not show "Install dependencies" step
       expect(output).not.toContain('pnpm install');
@@ -211,7 +212,7 @@ describe('Hono Generator', () => {
         shouldInstall: false,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: any) => c.join(' ')).join('\n');
 
       expect(output).toContain('yarn install');
       expect(output).toContain('yarn dev');

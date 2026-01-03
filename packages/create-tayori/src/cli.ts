@@ -12,10 +12,10 @@ const packageJson = JSON.parse(
 export type Framework = 'hono' | 'express' | 'lambda' | 'eventbridge';
 
 export interface CliOptions {
-  projectName?: string;
-  framework?: Framework;
-  packageManager?: PackageManager;
-  skipInstall?: boolean;
+  projectName?: string | undefined;
+  framework?: Framework | undefined;
+  packageManager?: PackageManager | undefined;
+  skipInstall?: boolean | undefined;
 }
 
 export function parseCli(argv?: string[]): CliOptions {
@@ -32,9 +32,9 @@ export function parseCli(argv?: string[]): CliOptions {
   const parsed = cli.parse(argv);
 
   return {
-    projectName: parsed.args[0],
-    framework: parsed.options.framework || parsed.options.fw,
-    packageManager: parsed.options.packageManager || parsed.options.pm,
-    skipInstall: parsed.options.skipInstall,
+    projectName: parsed.args[0] as string | undefined,
+    framework: parsed.options['framework'] || parsed.options['fw'],
+    packageManager: parsed.options['packageManager'] || parsed.options['pm'],
+    skipInstall: parsed.options['skipInstall'],
   };
 }
