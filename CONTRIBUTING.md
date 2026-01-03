@@ -32,7 +32,7 @@ Before contributing, please:
 ### Prerequisites
 
 - **Node.js**: >= 18.0.0
-- **pnpm**: 8.15.0 or higher
+- **pnpm**: 8.15.0 (exact version enforced by `packageManager` in package.json)
 - **TypeScript**: 5.3.0 or higher
 
 ### Installation
@@ -123,8 +123,8 @@ pnpm lint
 ### Working on a Specific Package
 
 ```bash
-# Navigate to the package
-cd packages/core
+# Navigate to the package (e.g., hono, stripe, express)
+cd packages/<package-name>
 
 # Run package-specific tests
 pnpm test
@@ -250,7 +250,7 @@ We follow conventional commit format for clear history:
 
 ### Scope
 
-The scope should be the package name:
+The scope should be the package name for package-specific changes:
 - `core`
 - `stripe`
 - `hono`
@@ -260,6 +260,10 @@ The scope should be the package name:
 - `zod`
 - `create-tayori`
 
+For root-level files (README.md, CONTRIBUTING.md, etc.), you can either:
+- Omit the scope: `docs: update installation instructions`
+- Use a descriptive scope: `docs(repo): update contributing guidelines`
+
 ### Examples
 
 ```
@@ -267,9 +271,11 @@ feat(stripe): add support for new webhook events
 
 fix(hono): handle missing headers gracefully
 
-docs(readme): update installation instructions
+docs: update installation instructions
 
 test(core): improve middleware test coverage
+
+chore(repo): update dependencies
 ```
 
 ## Pull Request Process
@@ -287,9 +293,9 @@ test(core): improve middleware test coverage
 
 Include in your PR description:
 
-- **What**: Brief description of the changes
-- **Why**: Motivation for the changes
-- **How**: Overview of the approach
+- **Description**: Brief description of what this PR does
+- **Motivation**: Why these changes are needed
+- **Changes**: List of specific changes made
 - **Testing**: How you tested the changes
 - **Breaking Changes**: If any, clearly document them
 
