@@ -173,40 +173,60 @@ app.post('/webhook', expressAdapter(router, { verifier }));
 
 ### Mixing JSON and Raw Body Routes
 
-If your app has other routes that need JSON parsing:
+If your app has other routes that need JSON parsing, you have two main options:
+
+#### Option 1: Webhook Route Before Global JSON Middleware
+
+Define webhook routes **before** applying `express.json()` globally:
 
 ```typescript
 const app = express();
 
-// JSON routes
+// ✅ Webhook route FIRST with raw body parser
+app.post('/webhook',
+  express.raw({ type: 'application/json' }),
+  expressAdapter(router, { verifier })
+);
+
+// Then apply JSON parser for other routes
 app.use(express.json());
 
+// Other JSON routes
 app.post('/api/users', (req, res) => {
   // req.body is parsed JSON
+  res.json({ success: true });
 });
 
-// Webhook route with raw body (must come BEFORE express.json() or use Router)
-// Option 1: Define webhook route before express.json()
+app.listen(3000);
+```
+
+#### Option 2: Separate Routers for Different Body Parsers
+
+Use separate `express.Router()` instances with different body parsers:
+
+```typescript
+const app = express();
+
+// Webhook router with raw body parser
 const webhookRouter = express.Router();
 webhookRouter.post('/webhook',
   express.raw({ type: 'application/json' }),
   expressAdapter(router, { verifier })
 );
-app.use(webhookRouter);
 
-// Then apply express.json() for other routes
-app.use(express.json());
-
-// Option 2: Use a separate router
+// API router with JSON body parser
 const apiRouter = express.Router();
 apiRouter.use(express.json());
-apiRouter.post('/users', (req, res) => { /* ... */ });
-app.use('/api', apiRouter);
+apiRouter.post('/users', (req, res) => {
+  // req.body is parsed JSON
+  res.json({ success: true });
+});
 
-app.post('/webhook',
-  express.raw({ type: 'application/json' }),
-  expressAdapter(router, { verifier })
-);
+// Mount both routers
+app.use(webhookRouter);      // Webhook routes at root level
+app.use('/api', apiRouter);  // API routes under /api
+
+app.listen(3000);
 ```
 
 ## Advanced Usage

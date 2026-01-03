@@ -303,7 +303,7 @@ router.on('my.event', async (event) => {
 
 const app = new Hono();
 app.post('/webhook', honoAdapter(router, {
-  verifier: createMyVerifier(),
+  verifier: createGitHubVerifier(process.env.GITHUB_WEBHOOK_SECRET!),
 }));
 ```
 
