@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { promptForConfig } from './prompts.js';
+import type prompts from 'prompts';
 
 // Mock prompts
 vi.mock('prompts', () => ({
@@ -53,8 +54,8 @@ describe('Prompts', () => {
 
       // Should have prompted for project name
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      expect(questions.some((q: any) => q.name === 'projectName')).toBe(true);
+      const questions = calls[0] as prompts.PromptObject[];
+      expect(questions.some((q: prompts.PromptObject) => q.name === 'projectName')).toBe(true);
     });
 
     it('should prompt for missing framework', async () => {
@@ -72,8 +73,8 @@ describe('Prompts', () => {
       expect(config.framework).toBe('express');
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      expect(questions.some((q: any) => q.name === 'framework')).toBe(true);
+      const questions = calls[0] as prompts.PromptObject[];
+      expect(questions.some((q: prompts.PromptObject) => q.name === 'framework')).toBe(true);
     });
 
     it('should prompt for missing package manager', async () => {
@@ -91,8 +92,8 @@ describe('Prompts', () => {
       expect(config.packageManager).toBe('yarn');
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      expect(questions.some((q: any) => q.name === 'packageManager')).toBe(true);
+      const questions = calls[0] as prompts.PromptObject[];
+      expect(questions.some((q: prompts.PromptObject) => q.name === 'packageManager')).toBe(true);
     });
 
     it('should prompt for missing shouldInstall', async () => {
@@ -110,8 +111,8 @@ describe('Prompts', () => {
       expect(config.shouldInstall).toBe(false);
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      expect(questions.some((q: any) => q.name === 'shouldInstall')).toBe(true);
+      const questions = calls[0] as prompts.PromptObject[];
+      expect(questions.some((q: prompts.PromptObject) => q.name === 'shouldInstall')).toBe(true);
     });
 
     it('should prompt for all missing values', async () => {
@@ -133,7 +134,7 @@ describe('Prompts', () => {
       });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
+      const questions = calls[0] as prompts.PromptObject[];
       expect(questions.length).toBe(4);
     });
 
@@ -151,8 +152,8 @@ describe('Prompts', () => {
       expect(config.shouldInstall).toBe(false);
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      expect(questions.some((q: any) => q.name === 'shouldInstall')).toBe(false);
+      const questions = calls[0] as prompts.PromptObject[];
+      expect(questions.some((q: prompts.PromptObject) => q.name === 'shouldInstall')).toBe(false);
     });
   });
 
@@ -164,8 +165,8 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      const projectNameQ = questions.find((q: any) => q.name === 'projectName');
+      const questions = calls[0] as prompts.PromptObject[];
+      const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
       expect(projectNameQ?.validate).toBeDefined();
       expect(typeof projectNameQ?.validate).toBe('function');
@@ -177,8 +178,8 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      const projectNameQ = questions.find((q: any) => q.name === 'projectName');
+      const questions = calls[0] as prompts.PromptObject[];
+      const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
       const validation = projectNameQ?.validate('');
       expect(validation).not.toBe(true);
@@ -190,8 +191,8 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as any[];
-      const projectNameQ = questions.find((q: any) => q.name === 'projectName');
+      const questions = calls[0] as prompts.PromptObject[];
+      const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
       const validation = projectNameQ?.validate('my-project');
       expect(validation).toBe(true);

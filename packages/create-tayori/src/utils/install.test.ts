@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { detectPackageManager } from './install.js';
+import type { ExecaReturnValue } from 'execa';
 
 // Mock execa
 vi.mock('execa', () => ({
@@ -27,7 +28,7 @@ describe('Install Utilities', () => {
         stdout: '8.15.0',
         stderr: '',
         exitCode: 0,
-      } as any);
+      } as Partial<ExecaReturnValue> as ExecaReturnValue);
 
       const pm = await detectPackageManager();
       expect(pm).toBe('pnpm');
