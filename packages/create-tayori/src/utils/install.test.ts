@@ -25,10 +25,10 @@ describe('Install Utilities', () => {
     it('should return pnpm when pnpm is available', async () => {
       const { execa } = await import('execa');
       vi.mocked(execa).mockResolvedValue({
-        stdout: '8.15.0',
-        stderr: '',
+        stdout: '8.15.0' as unknown as Buffer,
+        stderr: '' as unknown as Buffer,
         exitCode: 0,
-      } as Partial<ExecaReturnValue> as ExecaReturnValue);
+      } as ExecaReturnValue<Buffer>);
 
       const pm = await detectPackageManager();
       expect(pm).toBe('pnpm');

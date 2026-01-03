@@ -54,7 +54,8 @@ describe('Prompts', () => {
 
       // Should have prompted for project name
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.some((q: prompts.PromptObject) => q.name === 'projectName')).toBe(true);
     });
 
@@ -73,7 +74,8 @@ describe('Prompts', () => {
       expect(config.framework).toBe('express');
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.some((q: prompts.PromptObject) => q.name === 'framework')).toBe(true);
     });
 
@@ -92,7 +94,8 @@ describe('Prompts', () => {
       expect(config.packageManager).toBe('yarn');
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.some((q: prompts.PromptObject) => q.name === 'packageManager')).toBe(true);
     });
 
@@ -111,7 +114,8 @@ describe('Prompts', () => {
       expect(config.shouldInstall).toBe(false);
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.some((q: prompts.PromptObject) => q.name === 'shouldInstall')).toBe(true);
     });
 
@@ -134,7 +138,8 @@ describe('Prompts', () => {
       });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.length).toBe(4);
     });
 
@@ -152,7 +157,8 @@ describe('Prompts', () => {
       expect(config.shouldInstall).toBe(false);
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       expect(questions.some((q: prompts.PromptObject) => q.name === 'shouldInstall')).toBe(false);
     });
   });
@@ -165,7 +171,8 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
       expect(projectNameQ?.validate).toBeDefined();
@@ -178,11 +185,14 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
-      const validation = projectNameQ?.validate('');
-      expect(validation).not.toBe(true);
+      if (projectNameQ?.validate) {
+        const validation = (projectNameQ.validate as (value: string) => boolean | string)('');
+        expect(validation).not.toBe(true);
+      }
     });
 
     it('should accept non-empty project name', async () => {
@@ -191,11 +201,14 @@ describe('Prompts', () => {
       await promptForConfig({ framework: 'hono' });
 
       const calls = vi.mocked(prompts).mock.calls[0];
-      const questions = calls[0] as prompts.PromptObject[];
+      expect(calls).toBeDefined();
+      const questions = calls?.[0] as prompts.PromptObject[];
       const projectNameQ = questions.find((q: prompts.PromptObject) => q.name === 'projectName');
 
-      const validation = projectNameQ?.validate('my-project');
-      expect(validation).toBe(true);
+      if (projectNameQ?.validate) {
+        const validation = (projectNameQ.validate as (value: string) => boolean | string)('my-project');
+        expect(validation).toBe(true);
+      }
     });
   });
 });
