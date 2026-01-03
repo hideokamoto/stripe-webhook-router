@@ -16,25 +16,74 @@ on:
       - 'v*.*.*'
 
 jobs:
-  release:
-    name: Release & Publish
+  version-bump:
+    name: Version Bump
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Version bump
+        run: pnpm -r exec npm version ${{ inputs.release-type }} --no-git-tag-version
+
+      - name: Commit version bump
+        run: |
+          git add .
+          git commit -m "chore: bump version (${{ inputs.release-type }})"
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          # Get the new version from the root package.json or first package
+          VERSION=$(node -p "require('./package.json').version || require('./packages/core/package.json').version")
+          TAG="v${VERSION}"
+          git tag "${TAG}"
+          git push origin main
+          git push origin "${TAG}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
       id-token: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8.15.0
+          version: 9.15.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -56,7 +105,7 @@ jobs:
         run: pnpm build
 
       - name: Publish to npm
-        run: pnpm -r publish --access public --no-git-checks
+        run: pnpm -r publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
