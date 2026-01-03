@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test -- --coverage",
     "build": "pnpm -r build",
     "lint": "eslint packages/*/src",
     "typecheck": "pnpm -r typecheck",
@@ -15,6 +16,7 @@
     "@types/node": "^25.0.3",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",
+    "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
