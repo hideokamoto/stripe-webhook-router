@@ -18,8 +18,8 @@
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0"
   },
-  "packageManager": "pnpm@8.15.0",
+  "packageManager": "pnpm@9.15.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }
