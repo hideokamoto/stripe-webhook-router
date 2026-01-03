@@ -52,7 +52,7 @@ describe('Prompts', () => {
       expect(config.projectName).toBe('prompted-project');
 
       // Should have prompted for project name
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.some((q: any) => q.name === 'projectName')).toBe(true);
     });
@@ -71,7 +71,7 @@ describe('Prompts', () => {
 
       expect(config.framework).toBe('express');
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.some((q: any) => q.name === 'framework')).toBe(true);
     });
@@ -90,7 +90,7 @@ describe('Prompts', () => {
 
       expect(config.packageManager).toBe('yarn');
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.some((q: any) => q.name === 'packageManager')).toBe(true);
     });
@@ -109,7 +109,7 @@ describe('Prompts', () => {
 
       expect(config.shouldInstall).toBe(false);
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.some((q: any) => q.name === 'shouldInstall')).toBe(true);
     });
@@ -132,7 +132,7 @@ describe('Prompts', () => {
         shouldInstall: true,
       });
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.length).toBe(4);
     });
@@ -150,7 +150,7 @@ describe('Prompts', () => {
 
       expect(config.shouldInstall).toBe(false);
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       expect(questions.some((q: any) => q.name === 'shouldInstall')).toBe(false);
     });
@@ -163,7 +163,7 @@ describe('Prompts', () => {
       // Don't actually execute validation, just check it exists
       await promptForConfig({ framework: 'hono' });
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       const projectNameQ = questions.find((q: any) => q.name === 'projectName');
 
@@ -176,7 +176,7 @@ describe('Prompts', () => {
 
       await promptForConfig({ framework: 'hono' });
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       const projectNameQ = questions.find((q: any) => q.name === 'projectName');
 
@@ -189,7 +189,7 @@ describe('Prompts', () => {
 
       await promptForConfig({ framework: 'hono' });
 
-      const calls = vi.mocked(prompts).mock.calls[0];
+      const calls = vi.mocked(prompts).mock.calls[0]!;
       const questions = calls[0] as any[];
       const projectNameQ = questions.find((q: any) => q.name === 'projectName');
 

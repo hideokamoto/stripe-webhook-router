@@ -72,12 +72,12 @@ export async function promptForConfig(
   });
 
   return {
-    projectName: initialConfig.projectName || answers.projectName,
-    framework: initialConfig.framework || answers.framework,
-    packageManager: initialConfig.packageManager || answers.packageManager,
+    projectName: initialConfig.projectName || answers['projectName'],
+    framework: initialConfig.framework || answers['framework'],
+    packageManager: initialConfig.packageManager || answers['packageManager'],
     shouldInstall:
       initialConfig.shouldInstall !== undefined
         ? initialConfig.shouldInstall
-        : answers.shouldInstall,
+        : answers['shouldInstall'],
   };
 }
