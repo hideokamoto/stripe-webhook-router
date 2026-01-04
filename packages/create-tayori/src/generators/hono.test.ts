@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { MockInstance } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { generateHonoProject } from './hono.js';
@@ -162,7 +163,7 @@ describe('Hono Generator', () => {
   });
 
   describe('Console output', () => {
-    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let consoleLogSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
 
     beforeEach(() => {
       consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

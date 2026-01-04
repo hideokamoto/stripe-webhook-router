@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { logger } from './logger.js';
 
 describe('Logger', () => {
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleLogSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
+  let consoleErrorSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -66,28 +67,32 @@ describe('Logger', () => {
       logger.info('Custom info text');
 
       const lastCall = consoleLogSpy.mock.calls[0];
-      expect(lastCall.join(' ')).toContain('Custom info text');
+      expect(lastCall).toBeDefined();
+      expect(lastCall?.join(' ')).toContain('Custom info text');
     });
 
     it('should include the message text in success', () => {
       logger.success('Operation completed');
 
       const lastCall = consoleLogSpy.mock.calls[0];
-      expect(lastCall.join(' ')).toContain('Operation completed');
+      expect(lastCall).toBeDefined();
+      expect(lastCall?.join(' ')).toContain('Operation completed');
     });
 
     it('should include the message text in warn', () => {
       logger.warn('Warning: deprecated');
 
       const lastCall = consoleLogSpy.mock.calls[0];
-      expect(lastCall.join(' ')).toContain('Warning: deprecated');
+      expect(lastCall).toBeDefined();
+      expect(lastCall?.join(' ')).toContain('Warning: deprecated');
     });
 
     it('should include the message text in error', () => {
       logger.error('Error occurred');
 
       const lastCall = consoleErrorSpy.mock.calls[0];
-      expect(lastCall.join(' ')).toContain('Error occurred');
+      expect(lastCall).toBeDefined();
+      expect(lastCall?.join(' ')).toContain('Error occurred');
     });
   });
 });
