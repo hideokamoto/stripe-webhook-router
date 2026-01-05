@@ -32,6 +32,9 @@ importers:
       lint-staged:
         specifier: ^16.2.7
         version: 16.2.7
+      punycode:
+        specifier: ^2.3.1
+        version: 2.3.1
       typescript:
         specifier: ^5.3.0
         version: 5.9.3
