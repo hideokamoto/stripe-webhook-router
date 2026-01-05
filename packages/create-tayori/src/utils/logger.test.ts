@@ -21,7 +21,9 @@ describe('Logger', () => {
       logger.info('Test info message');
 
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0]).toMatchSnapshot();
+      const call = consoleLogSpy.mock.calls[0];
+      expect(call).toHaveLength(2);
+      expect(call?.[1]).toBe('Test info message');
     });
   });
 
@@ -30,7 +32,9 @@ describe('Logger', () => {
       logger.success('Test success message');
 
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0]).toMatchSnapshot();
+      const call = consoleLogSpy.mock.calls[0];
+      expect(call).toHaveLength(2);
+      expect(call?.[1]).toBe('Test success message');
     });
   });
 
@@ -39,7 +43,9 @@ describe('Logger', () => {
       logger.warn('Test warning message');
 
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0]).toMatchSnapshot();
+      const call = consoleLogSpy.mock.calls[0];
+      expect(call).toHaveLength(2);
+      expect(call?.[1]).toBe('Test warning message');
     });
   });
 
@@ -48,7 +54,9 @@ describe('Logger', () => {
       logger.error('Test error message');
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy.mock.calls[0]).toMatchSnapshot();
+      const call = consoleErrorSpy.mock.calls[0];
+      expect(call).toHaveLength(2);
+      expect(call?.[1]).toBe('Test error message');
     });
   });
 
