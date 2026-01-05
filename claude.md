@@ -17,12 +17,13 @@ This document provides comprehensive context for Claude Code and AI assistants w
 
 ### Monorepo Structure
 
-This is a pnpm workspace monorepo with **7 packages**:
+This is a pnpm workspace monorepo with **8 packages**:
 
 ```
 packages/
 ├── core/          # Framework-agnostic routing logic and Verifier interface
 ├── stripe/        # Stripe-specific types, router, and signature verifier
+├── zod/           # Zod schema validation helpers for runtime validation
 ├── hono/          # Hono framework adapter
 ├── express/       # Express framework adapter
 ├── lambda/        # AWS Lambda (API Gateway) adapter
@@ -37,6 +38,7 @@ packages/
 3. **Adapter Pattern**: Framework integrations are separate packages that wrap the core
 4. **Chainable API**: Hono-inspired fluent interface for registering handlers
 5. **Pluggable Verification**: Bring your own verifier for any webhook provider
+6. **Runtime Validation**: Optional Zod integration for schema validation
 
 ## Package Details
 
@@ -152,7 +154,51 @@ See `packages/stripe/MAINTAINING_STRIPE_EVENTMAP.md` for detailed maintenance pr
 
 **Tests**: `packages/stripe/test/stripe-router.test.ts`
 
-### 3. create-tayori (`packages/create-tayori/src/`)
+### 3. @tayori/zod (`packages/zod/src/index.ts` - 361 lines)
+
+**Purpose**: Zod schema validation helpers for runtime validation
+
+**Main Exports**:
+- `baseEventSchema` - Base Zod schema for webhook events
+- `createEventSchema(type, dataObjectSchema)` - Create typed event schemas
+- `defineEvent(type, dataObjectSchema)` - Define event schema for use with event maps
+- `SchemaRegistry<TEventMap>` - Runtime schema registry for validation
+- `withValidation(registry, options)` - Middleware for runtime validation
+- `createZodVerifier(options)` - Verifier wrapper that validates after signature verification
+- `WebhookValidationError` - Custom error class for validation failures
+- `UnknownEventTypeError` - Error for unregistered event types
+
+**Key Features**:
+- Runtime schema validation using Zod
+- Type-safe event map inference from schema definitions
+- Middleware-based validation
+- Verifier wrapper for validation at signature verification time
+- Support for unknown events (configurable)
+
+**Usage Pattern**:
+```typescript
+import { defineEvent, SchemaRegistry, withValidation } from '@tayori/zod';
+import { z } from 'zod';
+
+// Define event schemas
+const issueOpened = defineEvent('issue.opened', z.object({
+  id: z.number(),
+  title: z.string(),
+}));
+
+// Create registry and register schemas
+const registry = new SchemaRegistry()
+  .registerAll({ issueOpened });
+
+// Use with middleware
+router.use(withValidation(registry));
+```
+
+**Peer Dependencies**: `zod ^4.0.0`
+
+**Tests**: `packages/zod/test/*.test.ts`
+
+### 4. create-tayori (`packages/create-tayori/src/`)
 
 **Purpose**: Interactive CLI scaffolding tool for creating new Tayori projects
 
@@ -206,7 +252,7 @@ Options:
 - `prompts.test.ts`, `index.test.ts` - Configuration and orchestration
 - `utils/*.test.ts` - Utility functions
 
-### 4. Hono Template (`packages/create-tayori/templates/hono/`)
+### 5. Hono Template (`packages/create-tayori/templates/hono/`)
 
 **Template Structure**:
 ```
@@ -237,7 +283,7 @@ templates/hono/
 - Payment: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.succeeded`, `charge.refunded`
 - Subscription: `customer.subscription.created`, `updated`, `deleted`, `trial_will_end`, `invoice.paid`, `invoice.payment_failed`
 
-### 5. @tayori/hono (`packages/hono/src/index.ts`)
+### 6. @tayori/hono (`packages/hono/src/index.ts` - 90 lines)
 
 **Purpose**: Hono framework adapter
 
@@ -268,7 +314,7 @@ interface HonoAdapterOptions {
 - Signature verification tests
 - Error handling tests
 
-### 6. @tayori/express (`packages/express/src/index.ts`)
+### 7. @tayori/express (`packages/express/src/index.ts` - 106 lines)
 
 **Purpose**: Express framework adapter
 
@@ -294,7 +340,7 @@ interface ExpressAdapterOptions {
 
 **Tests**: `packages/express/test/express-adapter.test.ts`
 
-### 7. @tayori/lambda (`packages/lambda/src/index.ts`)
+### 8. @tayori/lambda (`packages/lambda/src/index.ts` - 111 lines)
 
 **Purpose**: AWS Lambda (API Gateway) adapter
 
@@ -319,7 +365,7 @@ interface LambdaAdapterOptions {
 
 **Tests**: `packages/lambda/test/lambda-adapter.test.ts`
 
-### 8. @tayori/eventbridge (`packages/eventbridge/src/index.ts`)
+### 9. @tayori/eventbridge (`packages/eventbridge/src/index.ts` - 48 lines)
 
 **Purpose**: AWS EventBridge adapter
 
@@ -518,10 +564,12 @@ class WebhookRouter<TEventMap extends Record<string, WebhookEvent>> {
 **Framework**: Vitest with Node environment
 
 **Test Organization**:
-- Core: `packages/core/test/webhook-router.test.ts` (512 lines)
+- Core: `packages/core/test/webhook-router.test.ts`
   - Routing logic, middleware, grouping, fanout
 - Stripe: `packages/stripe/test/stripe-router.test.ts`
   - Type exports and router instantiation
+- Zod: `packages/zod/test/*.test.ts`
+  - Schema validation, middleware, verifier wrapper
 - Adapters: `packages/{hono,express,lambda,eventbridge}/test/*.test.ts`
   - Integration tests with framework
   - Signature verification
@@ -1165,23 +1213,51 @@ router.on('event', handler);
 ## Recent Changes (Git History)
 
 **Latest Commits**:
-1. **PR #5**: Add create-tayori scaffolding package with Hono template
-2. **PR #4**: Generalize webhook framework for any event source
-3. **PR #3**: English documentation update
-4. **PR #2**: Rename library from @and-subscribe to @tayori
-5. **PR #1**: Initial Stripe webhook router implementation
+1. PR #23: Fix ESLint parsing errors by including test files in tsconfig
+2. PR #22: Remove Node 26 from CI test matrix
+3. PR #21: Fix logger tests to avoid Unicode emoji snapshot mismatches
+4. Recent: Add package-lock.json to gitignore
+5. Recent: Add core package build step before tests in CI
 
-**Current Development Branch**: `claude/add-claude-documentation-ILCVT`
+**Current Development**:
+- Branch: `claude/add-claude-documentation-lE7WF`
+- All 8 packages are functional and tested
+- CI/CD pipeline is stable (tests on Node 22 and 24)
+- Zod validation integration is complete
 
 ## Summary
 
 Tayori is a production-ready, type-safe webhook routing library with:
-- **7 packages** with clear separation of concerns
-- **351+ Stripe event types** with full type safety
+- **8 packages** with clear separation of concerns
+- **253+ Stripe event types** with full type safety
+- **Zod validation integration** for runtime schema validation
 - **Framework-agnostic core** with adapters for major platforms
 - **Scaffolding tool** for quick project setup via `npx create-tayori`
 - **Comprehensive test coverage** following TDD principles
 - **Professional build system** with tsup and vitest
 - **Monorepo architecture** using pnpm workspaces
+- **CI/CD pipeline** with GitHub Actions
 
 The library prioritizes type safety, developer experience, and security best practices while maintaining a clean, Hono-inspired API design.
+
+## For AI Assistants
+
+When working on this codebase:
+
+1. **Always read files before modifying** - Never propose changes to code you haven't read
+2. **Maintain type safety** - Preserve full type inference throughout
+3. **Follow existing patterns** - Look at similar implementations before adding new features
+4. **Add tests** - All new features should have tests
+5. **Update documentation** - Keep README.md and claude.md in sync with changes
+6. **Check workspace dependencies** - Use `workspace:*` for internal dependencies
+7. **Build core first** - Core package must be built before other packages can run tests
+8. **Follow commit conventions** - Use conventional commits format
+9. **Run all checks** - Build, typecheck, lint, and test before committing
+10. **Ask when uncertain** - If implementation approach is unclear, ask for clarification
+
+**Key Files to Review Before Changes**:
+- `packages/core/src/index.ts` - Core routing logic (290 lines)
+- `packages/stripe/src/index.ts` - Stripe event map (438 lines)
+- `packages/zod/src/index.ts` - Zod validation helpers (361 lines)
+- Relevant adapter files for framework-specific changes
+- Test files for understanding expected behavior
