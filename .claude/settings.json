@@ -12,13 +12,13 @@
         ]
       }
     ],
-    "PostToolUse": [
+    "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "cd /home/user/stripe-webhook-router && echo '✓ Running lint...' && pnpm lint --fix 2>/dev/null || true && echo '✓ Running typecheck...' && pnpm typecheck 2>/dev/null || true && echo '✓ Running tests...' && pnpm test 2>/dev/null || true"
+            "command": "if echo \"$CLAUDE_BASH_COMMAND\" | grep -q 'git commit'; then cd /home/user/stripe-webhook-router && echo '🔍 Pre-commit checks...' && echo '  ✓ Running lint...' && pnpm lint 2>&1 && echo '  ✓ Running typecheck...' && pnpm typecheck 2>&1 && echo '  ✓ Running tests...' && pnpm test 2>&1 && echo '✅ All checks passed!' || (echo '❌ Pre-commit checks failed! Fix errors before committing.' && exit 1); fi"
           }
         ]
       }

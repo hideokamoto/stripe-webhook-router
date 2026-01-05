@@ -14,13 +14,13 @@
 セッション開始時に以下を実行：
 - pnpm installで依存関係をインストール
 
-### PostToolUse Hook (Edit|Write)
-ファイル編集/作成後に以下を自動実行：
-1. **Lint** - `pnpm lint --fix`
+### PreToolUse Hook (Bash)
+`git commit`コマンド実行前に以下を自動実行：
+1. **Lint** - `pnpm lint`
 2. **Typecheck** - `pnpm typecheck`
 3. **Test** - `pnpm test`
 
-これにより、Claude Codeがコードを変更するたびに自動的にチェックが実行され、コミット前の抜け漏れを防ぎます。
+これにより、Claude Codeがgit commitを実行する前に必ずチェックが実行され、コミット前の抜け漏れを防ぎます。チェックが失敗した場合、コミットは実行されません。
 
 ## 🔧 カスタマイズ方法
 
