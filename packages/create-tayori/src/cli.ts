@@ -31,10 +31,27 @@ export function parseCli(argv?: string[]): CliOptions {
 
   const parsed = cli.parse(argv);
 
-  return {
-    projectName: parsed.args[0],
-    framework: parsed.options.framework || parsed.options.fw,
-    packageManager: parsed.options.packageManager || parsed.options.pm,
-    skipInstall: parsed.options.skipInstall,
-  };
+  const options: CliOptions = {};
+
+  const projectNameArg = parsed.args[0];
+  if (projectNameArg) {
+    options.projectName = projectNameArg;
+  }
+
+  const framework = parsed.options['framework'] || parsed.options['fw'];
+  if (framework) {
+    options.framework = framework;
+  }
+
+  const packageManager = parsed.options['packageManager'] || parsed.options['pm'];
+  if (packageManager) {
+    options.packageManager = packageManager;
+  }
+
+  const skipInstall = parsed.options['skipInstall'];
+  if (skipInstall !== undefined) {
+    options.skipInstall = skipInstall;
+  }
+
+  return options;
 }
