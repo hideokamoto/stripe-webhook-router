@@ -50,6 +50,9 @@ web_modules/
 # npm lock file (this project uses pnpm)
 package-lock.json
 
+# Uppercase documentation file (use lowercase claude.md instead)
+CLAUDE.md
+
 # Optional npm cache directory
 .npm
 
