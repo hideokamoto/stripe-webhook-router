@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '🔧 Initializing project...' && cd /home/user/stripe-webhook-router && pnpm install --frozen-lockfile --prefer-offline 2>/dev/null || true"
+            "command": "echo '🔧 Initializing project...' && pnpm install --frozen-lockfile --prefer-offline || echo '⚠️  Warning: pnpm install failed'"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_BASH_COMMAND\" | grep -q 'git commit'; then cd /home/user/stripe-webhook-router && echo '🔍 Pre-commit checks...' && echo '  ✓ Running lint...' && pnpm lint 2>&1 && echo '  ✓ Running typecheck...' && pnpm typecheck 2>&1 && echo '  ✓ Running tests...' && pnpm test 2>&1 && echo '✅ All checks passed!' || (echo '❌ Pre-commit checks failed! Fix errors before committing.' && exit 1); fi"
+            "command": "if echo \"$CLAUDE_BASH_COMMAND\" | grep -qE '\\bgit commit\\b'; then PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd) && cd \"$PROJECT_ROOT\" && echo '🔍 Pre-commit checks...' && echo '  ✓ Running lint...' && pnpm lint 2>&1 && echo '  ✓ Running typecheck...' && pnpm typecheck 2>&1 && echo '  ✓ Running tests...' && pnpm test 2>&1 && echo '✅ All checks passed!' || (echo '❌ Pre-commit checks failed! Fix errors before committing.' && exit 1); fi"
           }
         ]
       }
