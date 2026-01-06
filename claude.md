@@ -19,7 +19,7 @@ This document provides comprehensive context for Claude Code and AI assistants w
 
 This is a pnpm workspace monorepo with **8 packages**:
 
-```
+```text
 packages/
 ├── core/          # Framework-agnostic routing logic and Verifier interface
 ├── stripe/        # Stripe-specific types, router, and signature verifier
@@ -1229,7 +1229,7 @@ router.on('event', handler);
 
 Tayori is a production-ready, type-safe webhook routing library with:
 - **8 packages** with clear separation of concerns
-- **253+ Stripe event types** with full type safety
+- **351+ Stripe event types** with full type safety
 - **Zod validation integration** for runtime schema validation
 - **Framework-agnostic core** with adapters for major platforms
 - **Scaffolding tool** for quick project setup via `npx create-tayori`
