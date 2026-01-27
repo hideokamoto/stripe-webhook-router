@@ -365,6 +365,158 @@ describe('withValidation middleware', () => {
     const receivedEvent = handler.mock.calls[0][0];
     expect(receivedEvent.data.object.priority).toBe(5); // Default value applied
   });
+
+  it('removes unknown fields when schema uses strip mode', async () => {
+    // Schema with strip mode: removes unknown fields silently
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({
+        id: z.number(),
+        title: z.string(),
+      }).strip() // This will remove any unknown fields
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch({
+      id: 'evt_123',
+      type: 'issue.opened',
+      data: {
+        object: {
+          id: 1,
+          title: 'Test Issue',
+          extraField: 'should be removed', // This should be stripped
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledOnce();
+    const receivedEvent = handler.mock.calls[0][0];
+    expect(receivedEvent.data.object).toEqual({
+      id: 1,
+      title: 'Test Issue',
+      // extraField should not be present
+    });
+    expect((receivedEvent.data.object as Record<string, unknown>).extraField).toBeUndefined();
+  });
+
+  it('applies transformations to field values', async () => {
+    // Schema with transformation: transforms string to uppercase
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({
+        id: z.number(),
+        title: z.string().transform((val) => val.toUpperCase()),
+      })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch({
+      id: 'evt_123',
+      type: 'issue.opened',
+      data: {
+        object: {
+          id: 1,
+          title: 'lowercase title',
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledOnce();
+    const receivedEvent = handler.mock.calls[0][0];
+    expect(receivedEvent.data.object.title).toBe('LOWERCASE TITLE'); // Transformed to uppercase
+  });
+
+  it('mutates the original event object rather than creating a new one', async () => {
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({
+        id: z.number(),
+        priority: z.number().default(5),
+      })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    let eventBeforeValidation: unknown = null;
+    let eventAfterValidation: unknown = null;
+
+    // Middleware that captures the event before validation
+    const captureMiddleware: (event: unknown, next: () => Promise<void>) => Promise<void> = async (event, next) => {
+      eventBeforeValidation = event;
+      await next();
+      eventAfterValidation = event;
+    };
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(captureMiddleware)
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    const originalEvent = {
+      id: 'evt_123',
+      type: 'issue.opened',
+      data: { object: { id: 1 } },
+    };
+
+    await router.dispatch(originalEvent);
+
+    // The event object identity should remain the same
+    expect(eventBeforeValidation).toBe(eventAfterValidation);
+    expect(eventBeforeValidation).toBe(originalEvent);
+
+    // But the contents should have been mutated
+    expect((eventAfterValidation as Record<string, { object: { priority: number } }>).data.object.priority).toBe(5);
+  });
+
+  it('handles multiple transformations in sequence', async () => {
+    // Complex schema with multiple transformations
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({
+        id: z.number(),
+        title: z.string().transform((val) => val.trim()),
+        priority: z.number().default(5),
+        tags: z.array(z.string()).default([]),
+      })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch({
+      id: 'evt_123',
+      type: 'issue.opened',
+      data: {
+        object: {
+          id: 1,
+          title: '  Padded Title  ',
+          // priority and tags not provided
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledOnce();
+    const receivedEvent = handler.mock.calls[0][0];
+    expect(receivedEvent.data.object).toEqual({
+      id: 1,
+      title: 'Padded Title', // Trimmed
+      priority: 5, // Default applied
+      tags: [], // Default applied
+    });
+  });
 });
 
 describe('createZodVerifier', () => {
