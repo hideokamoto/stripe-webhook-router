@@ -38,5 +38,11 @@
     "express": ">=4.0.0"
   },
   "keywords": ["webhook", "router", "express", "typescript"],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hideokamoto/stripe-webhook-router"
+  },
+  "homepage": "https://github.com/hideokamoto/stripe-webhook-router#readme",
+  "bugs": "https://github.com/hideokamoto/stripe-webhook-router/issues"
 }
