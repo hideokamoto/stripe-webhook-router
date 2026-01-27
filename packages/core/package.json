@@ -32,5 +32,11 @@
     "typescript": "^5.3.0"
   },
   "keywords": ["webhook", "router", "typescript", "event-driven"],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hideokamoto/stripe-webhook-router"
+  },
+  "homepage": "https://github.com/hideokamoto/stripe-webhook-router#readme",
+  "bugs": "https://github.com/hideokamoto/stripe-webhook-router/issues"
 }
