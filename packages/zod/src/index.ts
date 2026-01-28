@@ -317,7 +317,7 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
     // Use getOwnPropertyNames to ensure we catch all properties, not just enumerable ones
     const eventKeys = Object.getOwnPropertyNames(event);
     for (const key of eventKeys) {
-      delete (event as Record<string, unknown>)[key];
+      delete (event as unknown as Record<string, unknown>)[key];
     }
 
     // Copy all properties from validated event (Object.assign handles enumerable properties)
