@@ -241,6 +241,25 @@ export interface ValidationMiddlewareOptions {
  *     // event is validated before reaching this handler
  *   });
  * ```
+ *
+ * @remarks
+ * **IMPORTANT: Event Mutation Behavior**
+ *
+ * This middleware mutates the event object in-place to propagate Zod transformations,
+ * defaults, and field stripping to downstream handlers. This is necessary because:
+ * - The middleware pattern doesn't support returning a new event object
+ * - Zod transformations (e.g., `.default()`, `.transform()`) must be reflected in handlers
+ * - Zod's `.strip()` mode removes unknown fields that shouldn't reach handlers
+ *
+ * **Potential Issues:**
+ * - Multiple middlewares may see inconsistent state if they cache event properties
+ * - Event references stored before validation will be mutated
+ * - Property enumeration order may change after validation
+ *
+ * **Best Practices:**
+ * - Place this middleware early in the chain before other middlewares
+ * - Don't cache event properties in middleware that runs before validation
+ * - Be aware that the event object identity remains the same but contents change
  */
 export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
   registry: SchemaRegistry<TEventMap>,
@@ -277,12 +296,31 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
       throw error;
     }
 
-    // Propagate validated/transformed data by mutating the original event object
-    // This ensures transformations, defaults, and stripped keys are reflected
+    // MUTATION: Replace event properties with validated/transformed data
+    //
+    // Why we mutate instead of returning a new object:
+    // - The Middleware type signature doesn't support returning a new event
+    // - All handlers and subsequent middleware receive the same event reference
+    // - Zod transformations (defaults, transforms, field stripping) must propagate
+    //
+    // How it works:
+    // 1. Delete all existing properties from the original event object
+    // 2. Copy all properties from the validated event to the original object
+    //
+    // This ensures:
+    // - Transformed values (e.g., from .transform()) are reflected
+    // - Default values (e.g., from .default()) are added
+    // - Stripped fields (e.g., from .strip()) are removed
+    // - The event object reference remains the same across the middleware chain
     const validatedEvent = result.data;
-    for (const key of Object.keys(event) as Array<keyof typeof event>) {
-      delete event[key];
+
+    // Use getOwnPropertyNames to ensure we catch all properties, not just enumerable ones
+    const eventKeys = Object.getOwnPropertyNames(event);
+    for (const key of eventKeys) {
+      delete (event as unknown as Record<string, unknown>)[key];
     }
+
+    // Copy all properties from validated event (Object.assign handles enumerable properties)
     Object.assign(event, validatedEvent);
 
     return next();
