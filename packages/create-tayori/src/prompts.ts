@@ -32,9 +32,9 @@ export async function promptForConfig(
       message: 'Select framework:',
       choices: [
         { title: 'Hono', value: 'hono' },
-        { title: 'Express', value: 'express', disabled: true },
-        { title: 'AWS Lambda', value: 'lambda', disabled: true },
-        { title: 'AWS EventBridge', value: 'eventbridge', disabled: true },
+        { title: 'Express', value: 'express' },
+        { title: 'AWS Lambda', value: 'lambda' },
+        { title: 'AWS EventBridge', value: 'eventbridge' },
       ],
       initial: 0,
     });

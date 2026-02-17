@@ -6,6 +6,9 @@ import pc from 'picocolors';
 import { parseCli } from './cli.js';
 import { promptForConfig, type ProjectConfig } from './prompts.js';
 import { generateHonoProject } from './generators/hono.js';
+import { generateExpressProject } from './generators/express.js';
+import { generateLambdaProject } from './generators/lambda.js';
+import { generateEventBridgeProject } from './generators/eventbridge.js';
 import { logger } from './utils/logger.js';
 import { pathExists, isEmpty } from './utils/files.js';
 
@@ -55,9 +58,33 @@ async function main() {
           shouldInstall: config.shouldInstall,
         });
         break;
+      case 'express':
+        await generateExpressProject({
+          projectName: config.projectName,
+          targetDir,
+          packageManager: config.packageManager,
+          shouldInstall: config.shouldInstall,
+        });
+        break;
+      case 'lambda':
+        await generateLambdaProject({
+          projectName: config.projectName,
+          targetDir,
+          packageManager: config.packageManager,
+          shouldInstall: config.shouldInstall,
+        });
+        break;
+      case 'eventbridge':
+        await generateEventBridgeProject({
+          projectName: config.projectName,
+          targetDir,
+          packageManager: config.packageManager,
+          shouldInstall: config.shouldInstall,
+        });
+        break;
       default:
         logger.error(
-          `Framework "${config.framework}" is not yet supported. Currently only "hono" is available.`
+          `Framework "${config.framework}" is not supported.`
         );
         process.exit(1);
     }
