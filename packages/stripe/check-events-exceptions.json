@@ -1,0 +1,30 @@
+{
+  "description": "Exception list for known false positives in Stripe event checking",
+  "notes": "These events may appear as 'extra' in StripeEventMap due to naming convention differences between SDK types and actual event names",
+  "exceptions": [
+    {
+      "eventName": "billing_portal.session.created",
+      "reason": "SDK naming convention may differ from actual event name"
+    },
+    {
+      "eventName": "billing_portal.session.expired",
+      "reason": "SDK naming convention may differ from actual event name"
+    },
+    {
+      "eventName": "identity.verification_session.created",
+      "reason": "Naming pattern mismatch in SDK type conversion"
+    },
+    {
+      "eventName": "identity.verification_session.redacted",
+      "reason": "Naming pattern mismatch in SDK type conversion"
+    },
+    {
+      "eventName": "radar.early_fraud_warning.created",
+      "reason": "SDK type naming differs from actual Stripe event naming"
+    },
+    {
+      "eventName": "radar.early_fraud_warning.updated",
+      "reason": "SDK type naming differs from actual Stripe event naming"
+    }
+  ]
+}

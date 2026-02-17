@@ -16,6 +16,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Load exception list for known false positives
+const exceptionsFile = path.join(__dirname, '../check-events-exceptions.json');
+let exceptions: Set<string> = new Set();
+if (fs.existsSync(exceptionsFile)) {
+  const exceptionsData = JSON.parse(fs.readFileSync(exceptionsFile, 'utf-8'));
+  if (exceptionsData.exceptions && Array.isArray(exceptionsData.exceptions)) {
+    exceptions = new Set(exceptionsData.exceptions.map((e: { eventName: string }) => e.eventName));
+  }
+}
+
 // Read our StripeEventMap source
 const sourceFile = path.join(__dirname, '../src/index.ts');
 const sourceContent = fs.readFileSync(sourceFile, 'utf-8');
@@ -96,6 +106,10 @@ while ((typeMatch = eventTypeRegex.exec(stripeTypes)) !== null) {
 const missingInOurs = [...sdkEvents].filter(e => !ourEvents.has(e));
 const extraInOurs = [...ourEvents].filter(e => !sdkEvents.has(e));
 
+// Separate exceptions from actual extra events
+const actualExtraEvents = extraInOurs.filter(e => !exceptions.has(e));
+const exceptionMatches = extraInOurs.filter(e => exceptions.has(e));
+
 console.log(`StripeEventMap has ${ourEvents.size} events`);
 console.log(`Stripe SDK appears to have ${sdkEvents.size} event types\n`);
 
@@ -108,12 +122,17 @@ if (missingInOurs.length > 0) {
   hasIssues = true;
 }
 
-if (extraInOurs.length > 0) {
+if (actualExtraEvents.length > 0) {
   console.log('⚠️  Events in StripeEventMap but not found in SDK:');
-  extraInOurs.sort().forEach(e => console.log(`  - ${e}`));
+  actualExtraEvents.sort().forEach(e => console.log(`  - ${e}`));
   console.log('');
-  // Note: This might be false positives due to naming convention differences
-  console.log('  (Note: These may be false positives due to naming conversion)\n');
+  hasIssues = true;
+}
+
+if (exceptionMatches.length > 0) {
+  console.log('ℹ️  Known false positives (exceptions):');
+  exceptionMatches.sort().forEach(e => console.log(`  - ${e}`));
+  console.log('  (These are expected mismatches due to naming convention differences)\n');
 }
 
 if (!hasIssues) {
