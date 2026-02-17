@@ -118,14 +118,28 @@ export type InferEventMap<T extends Record<string, EventSchemaDefinition>> = {
  */
 export class SchemaRegistry<TEventMap extends Record<string, WebhookEvent> = Record<string, WebhookEvent>> {
   private schemas: Map<string, z.ZodTypeAny> = new Map();
+  private options: SchemaRegistryOptions;
+
+  constructor(options: SchemaRegistryOptions = {}) {
+    this.options = options;
+  }
 
   /**
    * Register a schema for an event type
+   *
+   * @throws Error if a schema already exists for this type and strict mode is enabled
    */
   register<TType extends keyof TEventMap & string>(
     type: TType,
     schema: z.ZodTypeAny
   ): this {
+    if (this.schemas.has(type)) {
+      const message = `Schema for event type "${type}" is already registered`;
+      if (this.options.strict) {
+        throw new Error(message);
+      }
+      console.warn(`[SchemaRegistry] ${message}`);
+    }
     this.schemas.set(type, schema);
     return this;
   }
@@ -224,6 +238,17 @@ export interface ValidationMiddlewareOptions {
 }
 
 /**
+ * Options for schema registry
+ */
+export interface SchemaRegistryOptions {
+  /**
+   * Whether to throw an error when registering a schema that already exists
+   * @default false (logs warning instead)
+   */
+  strict?: boolean;
+}
+
+/**
  * Create a validation middleware using a schema registry
  *
  * @param registry - The schema registry to use for validation
@@ -260,6 +285,12 @@ export interface ValidationMiddlewareOptions {
  * - Place this middleware early in the chain before other middlewares
  * - Don't cache event properties in middleware that runs before validation
  * - Be aware that the event object identity remains the same but contents change
+ *
+ * **onError Callback Handling:**
+ * - The onError callback is wrapped with try-catch to handle errors gracefully
+ * - Errors in the callback are logged but do not suppress the original validation error
+ * - Consider implementing timeout mechanisms in your callback to prevent hanging requests
+ * - If your callback performs async operations, ensure they complete or timeout appropriately
  */
 export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
   registry: SchemaRegistry<TEventMap>,
@@ -268,12 +299,42 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
   const { allowUnknownEvents = true, onError } = options;
 
   return async (event, next) => {
+    // Check if schema is registered
+    const hasSchema = registry.has(event.type);
+
+    // Validate base structure for unknown events when allowUnknownEvents is true
+    if (!hasSchema && allowUnknownEvents) {
+      const baseResult = baseEventSchema.safeParse(event);
+      if (!baseResult.success) {
+        const error = new WebhookValidationError(
+          `Unknown event type "${event.type}" failed base structure validation: ${baseResult.error.message}`,
+          baseResult.error,
+          event.type
+        );
+
+        if (onError) {
+          try {
+            await onError(error);
+          } catch (callbackError) {
+            console.error('[withValidation] Error in onError callback:', callbackError);
+          }
+        }
+
+        throw error;
+      }
+      return next();
+    }
+
     // Reject unregistered events when allowUnknownEvents is false
-    if (!registry.has(event.type)) {
+    if (!hasSchema) {
       if (!allowUnknownEvents) {
         const error = new UnknownEventTypeError(event.type);
         if (onError) {
-          await onError(error);
+          try {
+            await onError(error);
+          } catch (callbackError) {
+            console.error('[withValidation] Error in onError callback:', callbackError);
+          }
         }
         throw error;
       }
@@ -290,7 +351,11 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
       );
 
       if (onError) {
-        await onError(error);
+        try {
+          await onError(error);
+        } catch (callbackError) {
+          console.error('[withValidation] Error in onError callback:', callbackError);
+        }
       }
 
       throw error;
@@ -376,8 +441,23 @@ export function createZodVerifier<T extends WebhookEvent>(
     // First, verify signature and parse event
     const result = await verifier(payload, headers);
 
+    const hasSchema = registry.has(result.event.type);
+
+    // Validate base structure for unknown events when allowUnknownEvents is true
+    if (!hasSchema && allowUnknownEvents) {
+      const baseResult = baseEventSchema.safeParse(result.event);
+      if (!baseResult.success) {
+        throw new WebhookValidationError(
+          `Unknown event type "${result.event.type}" failed base structure validation: ${baseResult.error.message}`,
+          baseResult.error,
+          result.event.type
+        );
+      }
+      return result;
+    }
+
     // Reject unregistered events when allowUnknownEvents is false
-    if (!registry.has(result.event.type)) {
+    if (!hasSchema) {
       if (!allowUnknownEvents) {
         throw new UnknownEventTypeError(result.event.type);
       }
