@@ -59,8 +59,8 @@ jobs:
       - name: Create and push tag
         id: tag
         run: |
-          # Get the new version from the root package.json or first package
-          VERSION=$(node -p "require('./package.json').version || require('./packages/core/package.json').version")
+          # Get the new version from the core package (root package.json is private and not versioned)
+          VERSION=$(node -p "require('./packages/core/package.json').version")
           TAG="v${VERSION}"
           git tag "${TAG}"
           git push origin main
