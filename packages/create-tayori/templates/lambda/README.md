@@ -33,7 +33,7 @@ The compiled handler will be in `dist/index.cjs`.
 
 ## Project Structure
 
-```
+```text
 src/
 ├── index.ts              # Lambda handler entry point
 └── handlers/

@@ -47,7 +47,7 @@ stripe trigger payment_intent.succeeded
 
 ## Project Structure
 
-```
+```text
 src/
 ├── index.ts              # Main application entry point
 └── handlers/

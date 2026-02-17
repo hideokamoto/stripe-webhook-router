@@ -64,7 +64,7 @@ export async function generateEventBridgeProject(
   console.log(pc.cyan('  sam deploy --guided'));
   console.log(pc.dim('     Or use AWS CDK / Serverless Framework\n'));
 
-  console.log(pc.dim('  4. Configure Stripe → EventBridge integration:'));
+  console.log(pc.dim(`  ${shouldInstall ? '4' : '5'}. Configure Stripe → EventBridge integration:`));
   console.log(pc.cyan('  https://stripe.com/docs/event-destinations/eventbridge\n'));
 
   console.log(pc.dim('📚 Documentation:'));

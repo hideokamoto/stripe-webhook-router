@@ -1,7 +1,6 @@
 {
   "name": "{{PROJECT_NAME}}",
   "version": "0.1.0",
-  "type": "module",
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"
@@ -9,7 +8,7 @@
   "dependencies": {
     "@tayori/lambda": "^0.1.0",
     "@tayori/stripe": "^0.1.0",
-    "stripe": "^20.0.0"
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.159",

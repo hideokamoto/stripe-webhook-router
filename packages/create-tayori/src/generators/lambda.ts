@@ -64,7 +64,7 @@ export async function generateLambdaProject(
   console.log(pc.dim(`  ${shouldInstall ? '3' : '4'}. Build the handler:`));
   console.log(pc.cyan(`  ${packageManager} build\n`));
 
-  console.log(pc.dim('  4. Deploy to AWS Lambda:'));
+  console.log(pc.dim(`  ${shouldInstall ? '4' : '5'}. Deploy to AWS Lambda:`));
   console.log(pc.cyan('  sam deploy --guided'));
   console.log(pc.dim('     Or use AWS CDK / Serverless Framework\n'));
 

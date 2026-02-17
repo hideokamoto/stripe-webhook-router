@@ -64,7 +64,7 @@ export async function generateExpressProject(
   console.log(pc.dim(`  ${shouldInstall ? '3' : '4'}. Start the development server:`));
   console.log(pc.cyan(`  ${packageManager} dev\n`));
 
-  console.log(pc.dim('  4. Test webhooks with Stripe CLI:'));
+  console.log(pc.dim(`  ${shouldInstall ? '4' : '5'}. Test webhooks with Stripe CLI:`));
   console.log(pc.cyan('  stripe listen --forward-to localhost:3000/webhook'));
   console.log(pc.cyan('  stripe trigger payment_intent.succeeded\n'));
 

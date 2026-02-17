@@ -13,7 +13,9 @@ if (!process.env.STRIPE_WEBHOOK_SECRET) {
 }
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_API_KEY);
+const stripe = new Stripe(process.env.STRIPE_API_KEY, {
+  apiVersion: '2022-11-15',
+});
 
 // Create webhook router
 const webhookRouter = new StripeWebhookRouter();
