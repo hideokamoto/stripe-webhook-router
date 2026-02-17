@@ -45,8 +45,8 @@ export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
     // Get raw body text for signature verification
     const rawBody = await c.req.text();
 
-    if (!rawBody) {
-      return c.json({ error: 'Request body is required' }, 400);
+    if (!rawBody || !rawBody.trim()) {
+      return c.json({ error: 'Request body cannot be empty' }, 400);
     }
 
     // Collect headers for verifier

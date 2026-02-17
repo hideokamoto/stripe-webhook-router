@@ -199,4 +199,74 @@ describe('expressAdapter', () => {
     // Should still return 500 response
     expect(mockRes.status).toHaveBeenCalledWith(500);
   });
+
+  it('should return 400 when body is an empty string', async () => {
+    mockReq.body = '';
+
+    const middleware = expressAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    await middleware(mockReq as Request, mockRes as Response, vi.fn());
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'Request body cannot be empty' })
+    );
+  });
+
+  it('should return 400 when body is whitespace-only string', async () => {
+    mockReq.body = '   \n\t  ';
+
+    const middleware = expressAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    await middleware(mockReq as Request, mockRes as Response, vi.fn());
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'Request body cannot be empty' })
+    );
+  });
+
+  it('should return 400 when body is an empty Buffer', async () => {
+    mockReq.body = Buffer.from('');
+
+    const middleware = expressAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    await middleware(mockReq as Request, mockRes as Response, vi.fn());
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'Request body cannot be empty' })
+    );
+  });
+
+  it('should handle multi-value headers by taking the first value', async () => {
+    mockReq.headers = {
+      'stripe-signature': ['first_signature', 'second_signature'],
+      'content-type': 'application/json',
+    } as any;
+
+    const handler = vi.fn().mockResolvedValue(undefined);
+    router.on('payment_intent.succeeded', handler);
+
+    const middleware = expressAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    await middleware(mockReq as Request, mockRes as Response, vi.fn());
+
+    expect(mockVerifier).toHaveBeenCalledWith(
+      mockReq.body,
+      expect.objectContaining({
+        'stripe-signature': 'first_signature',
+      })
+    );
+    expect(handler).toHaveBeenCalledOnce();
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
 });

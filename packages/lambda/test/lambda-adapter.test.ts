@@ -186,4 +186,78 @@ describe('lambdaAdapter', () => {
     expect(onError).toHaveBeenCalled();
     expect(result.statusCode).toBe(500);
   });
+
+  it('should return 400 when body is an empty string', async () => {
+    mockEvent.body = '';
+
+    const lambdaHandler = lambdaAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({ error: 'Request body cannot be empty' });
+  });
+
+  it('should return 400 when body is whitespace-only', async () => {
+    mockEvent.body = '   \n\t  ';
+
+    const lambdaHandler = lambdaAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({ error: 'Request body cannot be empty' });
+  });
+
+  it('should filter out null header values', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined);
+    router.on('payment_intent.succeeded', handler);
+
+    mockEvent.headers = {
+      'stripe-signature': 'test_signature',
+      'x-null-header': null as any,
+      'x-valid-header': 'valid_value',
+    };
+
+    const lambdaHandler = lambdaAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
+
+    expect(mockVerifier).toHaveBeenCalledWith(
+      JSON.stringify(testEvent),
+      expect.objectContaining({
+        'stripe-signature': 'test_signature',
+        'x-valid-header': 'valid_value',
+      })
+    );
+    // Verify null header was not included
+    expect(mockVerifier).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.not.objectContaining({
+        'x-null-header': expect.anything(),
+      })
+    );
+    expect(handler).toHaveBeenCalledOnce();
+    expect(result.statusCode).toBe(200);
+  });
+
+  it('should handle base64 encoded whitespace-only body', async () => {
+    mockEvent.body = Buffer.from('   \n\t  ').toString('base64');
+    mockEvent.isBase64Encoded = true;
+
+    const lambdaHandler = lambdaAdapter(router, {
+      verifier: mockVerifier,
+    });
+
+    const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({ error: 'Request body cannot be empty' });
+  });
 });

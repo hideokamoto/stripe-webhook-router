@@ -45,8 +45,8 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
   const { verifier, onError } = options;
 
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
-    // Validate request body exists
-    if (!req.body) {
+    // Validate request body exists and is the correct type
+    if (req.body === undefined || req.body === null) {
       res.status(400).json({ error: 'Request body is required' });
       return;
     }
@@ -61,6 +61,13 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
       res.status(400).json({
         error: 'Request body must be a raw Buffer or string. Use express.raw({ type: "application/json" }) middleware.',
       });
+      return;
+    }
+
+    // Convert Buffer to string if needed, then validate it's not empty or whitespace-only
+    const bodyString = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
+    if (!bodyString.trim()) {
+      res.status(400).json({ error: 'Request body cannot be empty' });
       return;
     }
 
