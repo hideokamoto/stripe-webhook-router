@@ -1,6 +1,6 @@
 {
   "name": "@tayori/lambda",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "AWS Lambda adapter for Tayori Webhook Router",
   "type": "module",
   "main": "./dist/index.cjs",

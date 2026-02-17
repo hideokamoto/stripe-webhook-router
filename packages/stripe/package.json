@@ -1,6 +1,6 @@
 {
   "name": "@tayori/stripe",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Stripe-specific type definitions and utilities",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -1,6 +1,6 @@
 {
   "name": "create-tayori",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Scaffolding tool for Tayori webhook handlers",
   "type": "module",
   "bin": {
