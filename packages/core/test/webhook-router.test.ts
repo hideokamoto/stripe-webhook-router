@@ -892,4 +892,247 @@ describe('WebhookRouter', () => {
       });
     });
   });
+
+  describe('Fanout error handling refactor', () => {
+    it('should separate all-or-nothing strategy clearly', async () => {
+      const router = new WebhookRouter();
+      const errors: unknown[] = [];
+
+      const handler1 = vi.fn().mockResolvedValue(undefined);
+      const handler2 = vi.fn().mockRejectedValue(new Error('Handler 2 failed'));
+      const handler3 = vi.fn().mockResolvedValue(undefined);
+
+      router.fanout('payment_intent.succeeded', [handler1, handler2, handler3], {
+        strategy: 'all-or-nothing',
+      });
+
+      const event = {
+        id: 'evt_all_or_nothing',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_test' } },
+      };
+
+      try {
+        await router.dispatch(event);
+      } catch (error) {
+        errors.push(error);
+      }
+
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toBeInstanceOf(Error);
+      expect((errors[0] as Error).message).toBe('Handler 2 failed');
+    });
+
+    it('should separate best-effort strategy clearly', async () => {
+      const router = new WebhookRouter();
+      const capturedErrors: Error[] = [];
+
+      const handler1 = vi.fn().mockResolvedValue(undefined);
+      const handler2 = vi.fn().mockRejectedValue(new Error('Handler 2 failed'));
+      const handler3 = vi.fn().mockResolvedValue(undefined);
+
+      router.fanout('payment_intent.succeeded', [handler1, handler2, handler3], {
+        strategy: 'best-effort',
+        onError: (error) => capturedErrors.push(error),
+      });
+
+      const event = {
+        id: 'evt_best_effort',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_test' } },
+      };
+
+      // Should not throw with best-effort strategy
+      await expect(router.dispatch(event)).resolves.toBeUndefined();
+
+      expect(handler1).toHaveBeenCalledOnce();
+      expect(handler2).toHaveBeenCalledOnce();
+      expect(handler3).toHaveBeenCalledOnce();
+      expect(capturedErrors).toHaveLength(1);
+      expect(capturedErrors[0]?.message).toBe('Handler 2 failed');
+    });
+  });
+
+  describe('Empty string validation', () => {
+    it('should reject empty string event type in on()', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn();
+
+      expect(() => {
+        router.on('', handler);
+      }).toThrow('Event type cannot be an empty string or whitespace');
+    });
+
+    it('should reject whitespace-only event type in on()', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn();
+
+      expect(() => {
+        router.on('   ', handler);
+      }).toThrow('Event type cannot be an empty string or whitespace');
+    });
+
+    it('should warn on empty array in on()', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      router.on([], handler);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'WebhookRouter.on(): Empty event array passed. No handlers registered.'
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should reject empty string prefix in route()', () => {
+      const router = new WebhookRouter();
+      const nested = new WebhookRouter();
+
+      expect(() => {
+        router.route('', nested);
+      }).toThrow('Route prefix cannot be an empty string or whitespace');
+    });
+
+    it('should reject whitespace-only prefix in route()', () => {
+      const router = new WebhookRouter();
+      const nested = new WebhookRouter();
+
+      expect(() => {
+        router.route('   ', nested);
+      }).toThrow('Route prefix cannot be an empty string or whitespace');
+    });
+
+    it('should reject empty string prefix in group()', () => {
+      const router = new WebhookRouter();
+
+      expect(() => {
+        router.group('', () => {});
+      }).toThrow('Group prefix cannot be an empty string or whitespace');
+    });
+
+    it('should reject whitespace-only prefix in group()', () => {
+      const router = new WebhookRouter();
+
+      expect(() => {
+        router.group('   ', () => {});
+      }).toThrow('Group prefix cannot be an empty string or whitespace');
+    });
+
+    it('should reject empty string event type in PrefixedRouter.on()', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn();
+
+      expect(() => {
+        router.group('test', (group) => {
+          group.on('', handler);
+        });
+      }).toThrow('Event type cannot be an empty string or whitespace');
+    });
+
+    it('should warn on empty array in PrefixedRouter.on()', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      router.group('test', (group) => {
+        group.on([], handler);
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'PrefixedRouter.on(): Empty event array passed. No handlers registered.'
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('Middleware next() call prevention', () => {
+    it('should detect multiple next() calls and throw error', async () => {
+      const router = new WebhookRouter();
+
+      router.use(async (_event, next) => {
+        await next();
+        // Try to call next again - should throw
+        await next();
+      });
+
+      router.on('test.event', vi.fn().mockResolvedValue(undefined));
+
+      const event = {
+        id: 'evt_multi_next',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(
+        'Middleware next() function called multiple times'
+      );
+    });
+
+    it('should allow single next() call in middleware', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.use(async (_event, next) => {
+        await next();
+      });
+
+      router.on('test.event', handler);
+
+      const event = {
+        id: 'evt_single_next',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).resolves.toBeUndefined();
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it('should detect multiple next() calls across multiple middlewares', async () => {
+      const router = new WebhookRouter();
+
+      router.use(async (_event, next) => {
+        await next();
+        await next(); // Second call should trigger error
+      });
+
+      router.use(async (_event, next) => {
+        await next();
+      });
+
+      router.on('test.event', vi.fn().mockResolvedValue(undefined));
+
+      const event = {
+        id: 'evt_multi_mw',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).rejects.toThrow(
+        'Middleware next() function called multiple times'
+      );
+    });
+
+    it('should allow middleware to skip next() call entirely', async () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      router.use(async () => {
+        // Intentionally not calling next
+      });
+
+      router.on('test.event', handler);
+
+      const event = {
+        id: 'evt_skip_next',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      await expect(router.dispatch(event)).resolves.toBeUndefined();
+      // Handler should not be called because next was not called
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
 });
