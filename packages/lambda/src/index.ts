@@ -82,10 +82,10 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
       const result = await verifier(rawBody, headers);
       webhookEvent = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Verification failed';
+      console.error('Webhook verification failed:', err);
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: message }),
+        body: JSON.stringify({ error: 'Verification failed' }),
         headers: { 'Content-Type': 'application/json' },
       };
     }

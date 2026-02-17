@@ -99,7 +99,7 @@ describe('lambdaAdapter', () => {
     const result = await lambdaHandler(mockEvent as APIGatewayProxyEvent, mockContext);
 
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toEqual({ error: 'Invalid signature' });
+    expect(JSON.parse(result.body)).toEqual({ error: 'Verification failed' });
   });
 
   it('should handle base64 encoded bodies', async () => {

@@ -27,8 +27,30 @@ export function eventBridgeAdapter<TEventMap extends Record<string, WebhookEvent
     eventBridgeEvent: EventBridgeEvent<string, unknown>,
     _context: Context
   ): Promise<void> => {
-    // Extract the webhook event from the EventBridge detail
-    const webhookEvent = eventBridgeEvent.detail as WebhookEvent;
+    // Validate and extract the webhook event from the EventBridge detail
+    const detail = eventBridgeEvent.detail;
+
+    // Type validation for required fields
+    if (typeof detail !== 'object' || detail === null) {
+      throw new Error('Invalid event detail: must be an object');
+    }
+
+    const detailObj = detail as Record<string, unknown>;
+
+    // Validate required fields
+    if (!detailObj['id'] || typeof detailObj['id'] !== 'string') {
+      throw new Error('Invalid event detail: missing or invalid "id" field');
+    }
+
+    if (!detailObj['type'] || typeof detailObj['type'] !== 'string') {
+      throw new Error('Invalid event detail: missing or invalid "type" field');
+    }
+
+    if (!detailObj['data'] || typeof detailObj['data'] !== 'object' || detailObj['data'] === null) {
+      throw new Error('Invalid event detail: missing or invalid "data" field');
+    }
+
+    const webhookEvent = detail as WebhookEvent;
 
     try {
       await router.dispatch(webhookEvent);
