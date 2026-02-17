@@ -145,6 +145,32 @@ describe('SchemaRegistry', () => {
     expect(registry.get('test.event')).toBe(schema);
   });
 
+  it('warns when registering a duplicate schema', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const registry = new SchemaRegistry();
+    const schema = createEventSchema('test.event', z.object({ id: z.number() }));
+
+    registry.register('test.event', schema);
+    registry.register('test.event', schema); // Register the same schema again
+
+    expect(consoleWarn).toHaveBeenCalledWith(
+      '[SchemaRegistry] Schema for event type "test.event" is already registered'
+    );
+
+    consoleWarn.mockRestore();
+  });
+
+  it('throws error when registering a duplicate schema in strict mode', () => {
+    const registry = new SchemaRegistry({ strict: true });
+    const schema = createEventSchema('test.event', z.object({ id: z.number() }));
+
+    registry.register('test.event', schema);
+
+    expect(() => {
+      registry.register('test.event', schema);
+    }).toThrow('Schema for event type "test.event" is already registered');
+  });
+
   it('registers multiple definitions at once', () => {
     const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
     const issueClosed = defineEvent('issue.closed', z.object({ id: z.number() }));
@@ -278,6 +304,43 @@ describe('withValidation middleware', () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
+  it('validates base structure for unknown events when allowUnknownEvents is true', async () => {
+    const registry = new SchemaRegistry();
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { allowUnknownEvents: true }))
+      .on('unknown.event', handler);
+
+    await expect(
+      router.dispatch({
+        id: 'evt_123',
+        type: 'unknown.event',
+        // Missing 'data' field
+      } as unknown as any)
+    ).rejects.toThrow(WebhookValidationError);
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('throws WebhookValidationError when unknown event has invalid base structure', async () => {
+    const registry = new SchemaRegistry();
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { allowUnknownEvents: true }))
+      .on('unknown.event', handler);
+
+    const result = await router.dispatch({
+      // Missing 'id' field
+      type: 'unknown.event',
+      data: { object: { anything: 'goes' } },
+    } as unknown as any).catch((e) => e);
+
+    expect(result).toBeInstanceOf(WebhookValidationError);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('calls onError handler when validation fails', async () => {
     const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
     const registry = new SchemaRegistry().registerAll({ issueOpened });
@@ -297,6 +360,32 @@ describe('withValidation middleware', () => {
 
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0][0]).toBeInstanceOf(WebhookValidationError);
+  });
+
+  it('handles errors thrown in onError callback gracefully', async () => {
+    const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onError = vi.fn().mockRejectedValue(new Error('Callback error'));
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { onError }))
+      .on('issue.opened', vi.fn());
+
+    // Should still throw the original validation error, not the callback error
+    await expect(
+      router.dispatch({
+        id: 'evt_123',
+        type: 'issue.opened',
+        data: { object: { id: 'invalid' } },
+      })
+    ).rejects.toThrow(WebhookValidationError);
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalled();
+    expect(consoleError.mock.calls[0][0]).toBe('[withValidation] Error in onError callback:');
+
+    consoleError.mockRestore();
   });
 
   it('throws UnknownEventTypeError when allowUnknownEvents is false', async () => {
