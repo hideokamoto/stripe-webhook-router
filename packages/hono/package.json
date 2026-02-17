@@ -13,12 +13,14 @@
         "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -30,13 +32,18 @@
   "devDependencies": {
     "hono": "^4.0.0",
     "tsup": "^8.0.0",
-    "vitest": "^1.0.0",
+    "vitest": "^4.0.0",
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
     "hono": ">=4.0.0"
   },
-  "keywords": ["webhook", "router", "hono", "typescript"],
+  "keywords": [
+    "webhook",
+    "router",
+    "hono",
+    "typescript"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
