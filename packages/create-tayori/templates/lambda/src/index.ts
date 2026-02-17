@@ -1,7 +1,6 @@
-import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
-import { honoAdapter } from '@tayori/hono';
+import { lambdaAdapter } from '@tayori/lambda';
 import { paymentHandlers } from './handlers/payment.js';
 import { subscriptionHandlers } from './handlers/subscription.js';
 
@@ -34,24 +33,10 @@ webhookRouter.use(async (event, next) => {
   console.log(`[${event.type}] Completed in ${duration}ms`);
 });
 
-// Create Hono app
-const app = new Hono();
-
-app.get('/', (c) => {
-  return c.json({
-    message: 'Tayori Webhook Handler',
-    status: 'running',
-  });
+// Export Lambda handler
+export const handler = lambdaAdapter(webhookRouter, {
+  verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET),
+  onError: async (error, event) => {
+    console.error(`Failed to process ${event?.type}:`, error);
+  },
 });
-
-app.post(
-  '/webhook',
-  honoAdapter(webhookRouter, {
-    verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET),
-    onError: async (error, event) => {
-      console.error(`Failed to process ${event?.type}:`, error);
-    },
-  })
-);
-
-export default app;

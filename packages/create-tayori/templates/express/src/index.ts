@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
+import express from 'express';
 import Stripe from 'stripe';
 import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
-import { honoAdapter } from '@tayori/hono';
+import { expressAdapter } from '@tayori/express';
 import { paymentHandlers } from './handlers/payment.js';
 import { subscriptionHandlers } from './handlers/subscription.js';
 
@@ -34,24 +34,32 @@ webhookRouter.use(async (event, next) => {
   console.log(`[${event.type}] Completed in ${duration}ms`);
 });
 
-// Create Hono app
-const app = new Hono();
+// Create Express app
+const app = express();
 
-app.get('/', (c) => {
-  return c.json({
+app.get('/', (_req, res) => {
+  res.json({
     message: 'Tayori Webhook Handler',
     status: 'running',
   });
 });
 
+// IMPORTANT: Use express.raw() for the webhook route to preserve raw body
+// required for Stripe signature verification
 app.post(
   '/webhook',
-  honoAdapter(webhookRouter, {
+  express.raw({ type: 'application/json' }),
+  expressAdapter(webhookRouter, {
     verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET),
     onError: async (error, event) => {
       console.error(`Failed to process ${event?.type}:`, error);
     },
   })
 );
+
+const port = process.env.PORT ?? 3000;
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
 
 export default app;
