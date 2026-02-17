@@ -123,6 +123,10 @@ export class WebhookRouter<
   ): this {
     const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
     for (const event of events) {
+      // Reject empty string event types
+      if (typeof event === 'string' && event.trim() === '') {
+        throw new Error('Event type cannot be an empty string or whitespace');
+      }
       const existing = this.handlers.get(event) ?? [];
       existing.push(handler as EventHandler<WebhookEvent>);
       this.handlers.set(event, existing);

@@ -3,83 +3,36 @@ import { WebhookRouter } from '../src/index.js';
 
 describe('WebhookRouter - Edge Cases', () => {
   describe('empty string event type', () => {
-    it('should register handlers for empty string event types', async () => {
+    it('should throw when registering handler for empty string event type', () => {
       const router = new WebhookRouter();
       const handler = vi.fn().mockResolvedValue(undefined);
 
-      router.on('', handler);
-
-      const event = {
-        id: 'evt_empty',
-        type: '',
-        data: { object: {} },
-      };
-
-      await router.dispatch(event);
-
-      expect(handler).toHaveBeenCalledOnce();
-      expect(handler).toHaveBeenCalledWith(event);
+      expect(() => router.on('', handler)).toThrow('Event type cannot be an empty string or whitespace');
     });
 
-    it('should not match empty event type with non-empty event types', async () => {
+    it('should throw when registering handler for whitespace-only event type', () => {
       const router = new WebhookRouter();
       const handler = vi.fn().mockResolvedValue(undefined);
 
-      router.on('', handler);
-
-      const event = {
-        id: 'evt_nonempty',
-        type: 'some.event',
-        data: { object: {} },
-      };
-
-      await router.dispatch(event);
-
-      expect(handler).not.toHaveBeenCalled();
+      expect(() => router.on('   ', handler)).toThrow('Event type cannot be an empty string or whitespace');
     });
 
-    it('should dispatch to correct handler when multiple empty handlers registered', async () => {
-      const router = new WebhookRouter();
-      const handler1 = vi.fn().mockResolvedValue(undefined);
-      const handler2 = vi.fn().mockResolvedValue(undefined);
-
-      router.on('', handler1);
-      router.on('', handler2);
-
-      const event = {
-        id: 'evt_empty2',
-        type: '',
-        data: { object: {} },
-      };
-
-      await router.dispatch(event);
-
-      expect(handler1).toHaveBeenCalledOnce();
-      expect(handler2).toHaveBeenCalledOnce();
-    });
-
-    it('should allow empty string in array of event types', async () => {
+    it('should throw when array contains empty string event type', () => {
       const router = new WebhookRouter();
       const handler = vi.fn().mockResolvedValue(undefined);
 
-      router.on(['', 'some.event'], handler);
+      expect(() => router.on(['', 'some.event'], handler)).toThrow('Event type cannot be an empty string or whitespace');
+    });
 
-      const emptyEvent = {
-        id: 'evt_1',
-        type: '',
-        data: { object: {} },
-      };
+    it('should not affect valid event type registrations after throwing', () => {
+      const router = new WebhookRouter();
+      const handler = vi.fn().mockResolvedValue(undefined);
 
-      const otherEvent = {
-        id: 'evt_2',
-        type: 'some.event',
-        data: { object: {} },
-      };
+      expect(() => router.on('', handler)).toThrow();
 
-      await router.dispatch(emptyEvent);
-      await router.dispatch(otherEvent);
-
-      expect(handler).toHaveBeenCalledTimes(2);
+      // Other registrations should still work
+      const validHandler = vi.fn().mockResolvedValue(undefined);
+      expect(() => router.on('valid.event', validHandler)).not.toThrow();
     });
   });
 

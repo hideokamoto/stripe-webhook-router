@@ -285,23 +285,11 @@ describe('eventBridgeAdapter - Edge Cases', () => {
       expect(handler).toHaveBeenCalledOnce();
     });
 
-    it('should handle empty string event type', async () => {
-      const emptyTypeEvent: WebhookEvent = {
-        id: 'evt_123',
-        type: '',
-        data: { object: {} },
-      };
-
-      mockEvent.detail = emptyTypeEvent;
-
+    it('should throw when registering empty string event type handler', () => {
       const handler = vi.fn().mockResolvedValue(undefined);
-      router.on('', handler);
 
-      const adapter = eventBridgeAdapter(router);
-
-      await adapter(mockEvent as any, mockContext as any);
-
-      expect(handler).toHaveBeenCalledOnce();
+      // Empty string event types are rejected by the router
+      expect(() => router.on('', handler)).toThrow('Event type cannot be an empty string or whitespace');
     });
 
     it('should handle event with null data object', async () => {
