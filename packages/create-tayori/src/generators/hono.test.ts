@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { MockInstance } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { generateHonoProject } from './hono.js';
@@ -163,7 +162,7 @@ describe('Hono Generator', () => {
   });
 
   describe('Console output', () => {
-    let consoleLogSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
+    let consoleLogSpy: any;
 
     beforeEach(() => {
       consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -181,7 +180,7 @@ describe('Hono Generator', () => {
         shouldInstall: false,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n');
 
       expect(output).toContain('Next steps:');
       expect(output).toContain('pnpm install');
@@ -198,7 +197,7 @@ describe('Hono Generator', () => {
         shouldInstall: true,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n');
 
       // Should not show "Install dependencies" step
       expect(output).not.toContain('pnpm install');
@@ -212,7 +211,7 @@ describe('Hono Generator', () => {
         shouldInstall: false,
       });
 
-      const output = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n');
 
       expect(output).toContain('yarn install');
       expect(output).toContain('yarn dev');

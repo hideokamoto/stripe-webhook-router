@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { MockInstance } from 'vitest';
 import { logger } from './logger.js';
 
 describe('Logger', () => {
-  let consoleLogSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
-  let consoleErrorSpy: MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>;
+  let consoleLogSpy: any;
+  let consoleErrorSpy: any;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
