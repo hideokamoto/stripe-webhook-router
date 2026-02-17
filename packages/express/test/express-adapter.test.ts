@@ -249,7 +249,7 @@ describe('expressAdapter', () => {
     mockReq.headers = {
       'stripe-signature': ['first_signature', 'second_signature'],
       'content-type': 'application/json',
-    } as any;
+    } as Record<string, string | string[]>;
 
     const handler = vi.fn().mockResolvedValue(undefined);
     router.on('payment_intent.succeeded', handler);

@@ -46,7 +46,7 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
 
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     // Validate request body exists and is the correct type
-    if (req.body === undefined || req.body === null) {
+    if (req.body == null) {
       res.status(400).json({ error: 'Request body is required' });
       return;
     }

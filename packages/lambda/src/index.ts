@@ -45,7 +45,7 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
     _context: Context
   ): Promise<APIGatewayProxyResult> => {
     // Validate request body exists
-    if (lambdaEvent.body === undefined || lambdaEvent.body === null) {
+    if (lambdaEvent.body == null) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Request body is required' }),

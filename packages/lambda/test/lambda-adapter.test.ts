@@ -219,9 +219,9 @@ describe('lambdaAdapter', () => {
 
     mockEvent.headers = {
       'stripe-signature': 'test_signature',
-      'x-null-header': null as any,
+      'x-null-header': null,
       'x-valid-header': 'valid_value',
-    };
+    } as Record<string, string | null>;
 
     const lambdaHandler = lambdaAdapter(router, {
       verifier: mockVerifier,
