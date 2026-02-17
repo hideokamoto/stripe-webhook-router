@@ -60,8 +60,10 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
 
     // Collect headers for verifier (normalize to lowercase)
     const headers: Record<string, string | undefined> = {};
-    for (const [key, value] of Object.entries(lambdaEvent.headers)) {
-      headers[key.toLowerCase()] = value;
+    if (lambdaEvent.headers) {
+      for (const [key, value] of Object.entries(lambdaEvent.headers)) {
+        headers[key.toLowerCase()] = value;
+      }
     }
 
     let webhookEvent: TEventMap[keyof TEventMap];
