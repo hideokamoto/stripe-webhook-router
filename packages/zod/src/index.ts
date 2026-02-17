@@ -198,6 +198,17 @@ export class SchemaRegistry<TEventMap extends Record<string, WebhookEvent> = Rec
 }
 
 /**
+ * Options for schema registry
+ */
+export interface SchemaRegistryOptions {
+  /**
+   * Whether to throw an error when registering a schema that already exists
+   * @default false (logs warning instead)
+   */
+  strict?: boolean;
+}
+
+/**
  * Validation error class for webhook events
  */
 export class WebhookValidationError extends Error {
@@ -235,17 +246,6 @@ export interface ValidationMiddlewareOptions {
    * Custom error handler for validation or unknown event errors
    */
   onError?: (error: WebhookValidationError | UnknownEventTypeError) => void | Promise<void>;
-}
-
-/**
- * Options for schema registry
- */
-export interface SchemaRegistryOptions {
-  /**
-   * Whether to throw an error when registering a schema that already exists
-   * @default false (logs warning instead)
-   */
-  strict?: boolean;
 }
 
 /**
@@ -326,19 +326,16 @@ export function withValidation<TEventMap extends Record<string, WebhookEvent>>(
     }
 
     // Reject unregistered events when allowUnknownEvents is false
-    if (!hasSchema) {
-      if (!allowUnknownEvents) {
-        const error = new UnknownEventTypeError(event.type);
-        if (onError) {
-          try {
-            await onError(error);
-          } catch (callbackError) {
-            console.error('[withValidation] Error in onError callback:', callbackError);
-          }
+    if (!hasSchema && !allowUnknownEvents) {
+      const error = new UnknownEventTypeError(event.type);
+      if (onError) {
+        try {
+          await onError(error);
+        } catch (callbackError) {
+          console.error('[withValidation] Error in onError callback:', callbackError);
         }
-        throw error;
       }
-      return next();
+      throw error;
     }
 
     const result = registry.safeParse(event);
@@ -457,11 +454,8 @@ export function createZodVerifier<T extends WebhookEvent>(
     }
 
     // Reject unregistered events when allowUnknownEvents is false
-    if (!hasSchema) {
-      if (!allowUnknownEvents) {
-        throw new UnknownEventTypeError(result.event.type);
-      }
-      return result;
+    if (!hasSchema && !allowUnknownEvents) {
+      throw new UnknownEventTypeError(result.event.type);
     }
 
     const parseResult = registry.safeParse(result.event);

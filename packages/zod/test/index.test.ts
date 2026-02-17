@@ -312,12 +312,15 @@ describe('withValidation middleware', () => {
       .use(withValidation(registry, { allowUnknownEvents: true }))
       .on('unknown.event', handler);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type InvalidEvent = any;
+
     await expect(
       router.dispatch({
         id: 'evt_123',
         type: 'unknown.event',
         // Missing 'data' field
-      } as unknown as any)
+      } as InvalidEvent)
     ).rejects.toThrow(WebhookValidationError);
 
     expect(handler).not.toHaveBeenCalled();
@@ -331,11 +334,15 @@ describe('withValidation middleware', () => {
       .use(withValidation(registry, { allowUnknownEvents: true }))
       .on('unknown.event', handler);
 
-    const result = await router.dispatch({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type InvalidEvent = any;
+    const invalidEvent: InvalidEvent = {
       // Missing 'id' field
       type: 'unknown.event',
       data: { object: { anything: 'goes' } },
-    } as unknown as any).catch((e) => e);
+    };
+
+    const result = await router.dispatch(invalidEvent).catch((e) => e);
 
     expect(result).toBeInstanceOf(WebhookValidationError);
     expect(handler).not.toHaveBeenCalled();
