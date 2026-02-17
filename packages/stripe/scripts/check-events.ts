@@ -15,6 +15,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// Derive __dirname for ESM compatibility
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load exception list for known false positives
 const exceptionsFile = path.join(__dirname, '../check-events-exceptions.json');
@@ -47,59 +51,24 @@ while ((lineMatch = eventLineRegex.exec(match[1])) !== null) {
 }
 
 // Read Stripe SDK types to find all event types
-// Look for types matching the pattern: Stripe.{EventName}Event
-const stripeTypesPath = path.join(__dirname, '../node_modules/stripe/types/index.d.ts');
+// The EventTypes.d.ts file contains the union type of all event types
+const stripeTypesPath = path.join(__dirname, '../node_modules/stripe/types/EventTypes.d.ts');
 
 if (!fs.existsSync(stripeTypesPath)) {
-  console.error('Stripe types not found. Run pnpm install first.');
+  console.error('Stripe EventTypes not found. Run pnpm install first.');
   process.exit(1);
 }
 
 const stripeTypes = fs.readFileSync(stripeTypesPath, 'utf-8');
 
-// Find all exported event types (they end with 'Event' and follow naming conventions)
+// Find all event type definitions by looking for the type property pattern
+// Each event interface has: type: 'event.name';
 const sdkEvents = new Set<string>();
-const eventTypeRegex = /export type (\w+Event)\b/g;
-let typeMatch;
-while ((typeMatch = eventTypeRegex.exec(stripeTypes)) !== null) {
-  const typeName = typeMatch[1];
-  // Convert PascalCase type name to dot.notation event name
-  // e.g., PaymentIntentSucceededEvent -> payment_intent.succeeded
-  const eventName = typeName
-    .replace(/Event$/, '')
-    .replace(/([A-Z])/g, '_$1')
-    .toLowerCase()
-    .slice(1) // Remove leading underscore
-    .replace(/_+/g, '_')
-    // Handle common patterns
-    .replace(/^payment_intent_/, 'payment_intent.')
-    .replace(/^customer_subscription_/, 'customer.subscription.')
-    .replace(/^customer_/, 'customer.')
-    .replace(/^invoice_/, 'invoice.')
-    .replace(/^charge_/, 'charge.')
-    .replace(/^checkout_session_/, 'checkout.session.')
-    .replace(/^account_/, 'account.')
-    .replace(/^setup_intent_/, 'setup_intent.')
-    .replace(/^payout_/, 'payout.')
-    .replace(/^product_/, 'product.')
-    .replace(/^price_/, 'price.')
-    .replace(/^subscription_schedule_/, 'subscription_schedule.')
-    .replace(/^issuing_/, 'issuing_')
-    .replace(/^identity_verification_session_/, 'identity.verification_session.')
-    .replace(/^billing_portal_/, 'billing_portal.')
-    .replace(/^terminal_reader_/, 'terminal.reader.')
-    .replace(/^test_helpers_test_clock_/, 'test_helpers.test_clock.')
-    .replace(/^tax_/, 'tax.')
-    .replace(/^radar_early_fraud_warning_/, 'radar.early_fraud_warning.')
-    .replace(/^reporting_report_/, 'reporting.report_')
-    .replace(/^sigma_scheduled_query_run_/, 'sigma.scheduled_query_run.')
-    .replace(/^source_/, 'source.')
-    .replace(/^file_/, 'file.');
-
-  // Only add if it looks like a valid event name (contains a dot or underscore)
-  if (eventName.includes('.') || eventName.includes('_')) {
-    sdkEvents.add(eventName);
-  }
+const eventNameRegex = /type:\s*'([^']+)';/g;
+let eventMatch;
+while ((eventMatch = eventNameRegex.exec(stripeTypes)) !== null) {
+  const eventName = eventMatch[1];
+  sdkEvents.add(eventName);
 }
 
 // Compare
