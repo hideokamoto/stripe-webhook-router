@@ -404,7 +404,7 @@ router.use(async (event, next) => {
 ```
 
 **Event ID Format:**
-Stripe event IDs follow the format: `evt_<base32_string>` (e.g., `evt_1234567890abcdef`). These IDs are guaranteed to be unique across all your Stripe events.
+Stripe event IDs use the "evt_" prefix followed by an alphanumeric string containing mixed upper and lowercase letters and digits (e.g., `evt_1NG8Du2eZvKYlo2CUI79vXWy`). Test-mode event IDs may appear with the "evt_test_" prefix. These IDs are guaranteed to be unique across all your Stripe events.
 
 ### Error Handling and Information Disclosure
 
