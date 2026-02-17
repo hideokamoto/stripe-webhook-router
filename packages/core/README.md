@@ -280,6 +280,81 @@ router.use(async (event, next) => {
 });
 ```
 
+## Known Limitations
+
+### Group Middleware Scope
+
+There is a known limitation with the `group().use()` method that differs from expected behavior:
+
+**Current Behavior**: Middleware registered within a `group()` using `.use()` applies to the **entire router**, not just handlers within that group.
+
+```typescript
+const router = new WebhookRouter();
+
+router.use(async (event, next) => {
+  console.log('Router-level middleware');
+  await next();
+});
+
+router.group('payment', (group) => {
+  // ⚠️ This middleware runs for ALL events, not just 'payment.*'
+  group.use(async (event, next) => {
+    console.log('Group middleware - runs for ALL events');
+    await next();
+  });
+
+  group.on('succeeded', async (event) => {
+    console.log('Handler executed');
+  });
+});
+
+// Both middlewares run for 'payment.succeeded' AND 'user.created'
+await router.dispatch({ type: 'payment.succeeded', ... });
+await router.dispatch({ type: 'user.created', ... });
+```
+
+**Workaround**: To apply middleware only to specific events within a group, use one of these alternatives:
+
+1. **Event-level filtering in router middleware**:
+```typescript
+router.use(async (event, next) => {
+  if (event.type.startsWith('payment.')) {
+    console.log('Only for payment events');
+  }
+  await next();
+});
+```
+
+2. **Handler-level error handling**:
+```typescript
+router.group('payment', (group) => {
+  group.on('succeeded', async (event) => {
+    try {
+      // Your handler logic
+    } catch (error) {
+      console.error('Error in payment handler:', error);
+      throw error;
+    }
+  });
+});
+```
+
+3. **Separate routers for different concerns**:
+```typescript
+const paymentRouter = new WebhookRouter();
+paymentRouter.use(async (event, next) => {
+  console.log('Only for payment events');
+  await next();
+});
+
+paymentRouter.on('succeeded', async (event) => {
+  // Handle payment success
+});
+
+const mainRouter = new WebhookRouter();
+mainRouter.route('payment', paymentRouter);
+```
+
 ## Using with Framework Adapters
 
 `@tayori/core` is framework-agnostic. Use it with framework-specific adapters:
