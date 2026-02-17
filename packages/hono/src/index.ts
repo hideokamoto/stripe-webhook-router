@@ -62,8 +62,9 @@ export function honoAdapter<TEventMap extends Record<string, WebhookEvent>>(
       const result = await verifier(rawBody, headers);
       webhookEvent = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
       console.error('Webhook verification failed:', err);
-      return c.json({ error: 'Verification failed' }, 400);
+      return c.json({ error }, 400);
     }
 
     // Dispatch the event

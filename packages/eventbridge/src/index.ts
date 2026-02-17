@@ -38,15 +38,15 @@ export function eventBridgeAdapter<TEventMap extends Record<string, WebhookEvent
     const detailObj = detail as Record<string, unknown>;
 
     // Validate required fields
-    if (!detailObj.id || typeof detailObj.id !== 'string') {
+    if (!detailObj['id'] || typeof detailObj['id'] !== 'string') {
       throw new Error('Invalid event detail: missing or invalid "id" field');
     }
 
-    if (!detailObj.type || typeof detailObj.type !== 'string') {
+    if (!detailObj['type'] || typeof detailObj['type'] !== 'string') {
       throw new Error('Invalid event detail: missing or invalid "type" field');
     }
 
-    if (!detailObj.data || typeof detailObj.data !== 'object' || detailObj.data === null) {
+    if (!detailObj['data'] || typeof detailObj['data'] !== 'object' || detailObj['data'] === null) {
       throw new Error('Invalid event detail: missing or invalid "data" field');
     }
 
