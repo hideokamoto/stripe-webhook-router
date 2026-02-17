@@ -208,4 +208,78 @@ describe('honoAdapter', () => {
     expect(onError).toHaveBeenCalled();
     expect(res.status).toBe(500);
   });
+
+  it('should return 400 when body is an empty string', async () => {
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      verifier: mockVerifier,
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: '',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const res = await app.request(req);
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toEqual({ error: 'Request body cannot be empty' });
+  });
+
+  it('should return 400 when body is whitespace-only', async () => {
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      verifier: mockVerifier,
+    }));
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body: '   \n\t  ',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const res = await app.request(req);
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toEqual({ error: 'Request body cannot be empty' });
+  });
+
+  it('should handle headers correctly with single values', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined);
+    router.on('payment_intent.succeeded', handler);
+
+    const app = new Hono();
+    app.post('/webhook', honoAdapter(router, {
+      verifier: mockVerifier,
+    }));
+
+    const body = JSON.stringify(testEvent);
+
+    const req = new Request('http://localhost/webhook', {
+      method: 'POST',
+      body,
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'test_signature',
+      },
+    });
+
+    const res = await app.request(req);
+
+    expect(mockVerifier).toHaveBeenCalledWith(
+      body,
+      expect.objectContaining({
+        'stripe-signature': 'test_signature',
+      })
+    );
+    expect(handler).toHaveBeenCalledOnce();
+    expect(res.status).toBe(200);
+  });
 });

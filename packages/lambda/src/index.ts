@@ -44,8 +44,8 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
     lambdaEvent: APIGatewayProxyEvent,
     _context: Context
   ): Promise<APIGatewayProxyResult> => {
-    // Validate request body
-    if (!lambdaEvent.body) {
+    // Validate request body exists
+    if (lambdaEvent.body == null) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Request body is required' }),
@@ -58,10 +58,21 @@ export function lambdaAdapter<TEventMap extends Record<string, WebhookEvent>>(
       ? Buffer.from(lambdaEvent.body, 'base64').toString('utf8')
       : lambdaEvent.body;
 
-    // Collect headers for verifier (normalize to lowercase)
+    // Validate body is not empty or whitespace-only
+    if (!rawBody.trim()) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Request body cannot be empty' }),
+        headers: { 'Content-Type': 'application/json' },
+      };
+    }
+
+    // Collect headers for verifier (normalize to lowercase, filter out null values)
     const headers: Record<string, string | undefined> = {};
     for (const [key, value] of Object.entries(lambdaEvent.headers)) {
-      headers[key.toLowerCase()] = value;
+      if (value !== null && value !== undefined) {
+        headers[key.toLowerCase()] = value;
+      }
     }
 
     let webhookEvent: TEventMap[keyof TEventMap];
