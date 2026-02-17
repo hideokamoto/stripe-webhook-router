@@ -306,6 +306,135 @@ This package includes type definitions for all 253+ Stripe webhook events, inclu
 
 For a complete list, see the [Stripe API documentation](https://stripe.com/docs/api/events/types).
 
+## Security
+
+### Webhook Signature Verification
+
+All webhook events must be verified using the signature provided by Stripe to ensure authenticity and prevent tampering. This package includes built-in signature verification using HMAC-SHA256:
+
+```typescript
+import Stripe from 'stripe';
+import { createStripeVerifier } from '@tayori/stripe';
+
+const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+
+const verifier = createStripeVerifier(
+  stripe,
+  process.env.STRIPE_WEBHOOK_SECRET!
+);
+```
+
+**How it works:**
+1. Stripe signs each webhook using your webhook endpoint's signing secret
+2. The signature is included in the `stripe-signature` header
+3. The verifier validates the signature using HMAC-SHA256
+4. The timestamp in the signature is verified to be within an acceptable tolerance (default: 5 minutes)
+
+**Timestamp Tolerance:**
+The default timestamp tolerance is 300 seconds (5 minutes). This prevents replay attacks where old webhooks might be replayed. The Stripe SDK validates that the timestamp in the signature header is within this window.
+
+### Replay Attack Prevention
+
+To prevent processing the same webhook event multiple times, implement idempotency tracking using the webhook event ID:
+
+```typescript
+import Stripe from 'stripe';
+import { StripeWebhookRouter, createStripeVerifier } from '@tayori/stripe';
+import { honoAdapter } from '@tayori/hono';
+import { Hono } from 'hono';
+
+// In-memory store for demonstration (use a database in production)
+const processedEventIds = new Set<string>();
+
+const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+const router = new StripeWebhookRouter();
+
+// Add middleware to check for duplicate events
+router.use(async (event, next) => {
+  if (processedEventIds.has(event.id)) {
+    console.log('Duplicate event ignored:', event.id);
+    return;
+  }
+
+  processedEventIds.add(event.id);
+  await next();
+});
+
+router.on('payment_intent.succeeded', async (event) => {
+  console.log('Processing payment:', event.data.object.id);
+  // Your business logic here
+});
+
+const app = new Hono();
+
+app.post('/webhook', honoAdapter(router, {
+  verifier: createStripeVerifier(stripe, process.env.STRIPE_WEBHOOK_SECRET!),
+}));
+
+export default app;
+```
+
+**Production Recommendation:**
+For production applications, store processed event IDs in a database with a TTL. This ensures idempotency even after application restarts:
+
+```typescript
+// Example using a database (pseudocode)
+router.use(async (event, next) => {
+  const exists = await db.eventLog.findUnique({
+    where: { id: event.id },
+  });
+
+  if (exists) {
+    console.log('Duplicate event ignored:', event.id);
+    return;
+  }
+
+  // Record the event before processing
+  await db.eventLog.create({
+    data: { id: event.id, timestamp: new Date() },
+  });
+
+  try {
+    await next();
+  } catch (error) {
+    // If processing fails, you might want to mark it for retry
+    throw error;
+  }
+});
+```
+
+**Event ID Format:**
+Stripe event IDs follow the format: `evt_<base32_string>` (e.g., `evt_1234567890abcdef`). These IDs are guaranteed to be unique across all your Stripe events.
+
+### Error Handling and Information Disclosure
+
+Error messages from webhook verification should never expose internal details to the client. This package sanitizes all verification error responses:
+
+```typescript
+// Instead of exposing error details like:
+// { error: "Unable to verify signature: invalid timestamp" }
+
+// The adapter responds with:
+// { error: "Verification failed" }
+
+// Actual error details are logged server-side:
+// console.error('Webhook verification failed:', err)
+```
+
+Configure your logging to capture these details for debugging while keeping client responses safe:
+
+```typescript
+// Your application logging (in production, use a proper logging service)
+router.on('payment_intent.succeeded', async (event) => {
+  try {
+    // Process payment
+  } catch (error) {
+    console.error('Payment processing failed for event:', event.id, error);
+    throw error; // This error will be handled by onError handler
+  }
+});
+```
+
 ## Type Safety Examples
 
 The router provides full IntelliSense and type checking:

@@ -77,8 +77,8 @@ export function expressAdapter<TEventMap extends Record<string, WebhookEvent>>(
       const result = await verifier(rawBody, headers);
       event = result.event as TEventMap[keyof TEventMap];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Verification failed';
-      res.status(400).json({ error: message });
+      console.error('Webhook verification failed:', err);
+      res.status(400).json({ error: 'Verification failed' });
       return;
     }
 
