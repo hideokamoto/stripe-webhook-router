@@ -122,7 +122,18 @@ export class WebhookRouter<
     handler: EventHandler<TEventMap[T]>
   ): this {
     const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
+
+    // Warn if empty array is passed
+    if (Array.isArray(eventOrEvents) && eventOrEvents.length === 0) {
+      console.warn('WebhookRouter.on(): Empty event array passed. No handlers registered.');
+      return this;
+    }
+
     for (const event of events) {
+      // Reject empty string event types
+      if (typeof event === 'string' && event.trim() === '') {
+        throw new Error('Event type cannot be an empty string or whitespace');
+      }
       const existing = this.handlers.get(event) ?? [];
       existing.push(handler as EventHandler<WebhookEvent>);
       this.handlers.set(event, existing);
@@ -149,6 +160,11 @@ export class WebhookRouter<
    * @returns this for chaining
    */
   route(prefix: string, router: WebhookRouter): this {
+    // Reject empty prefix
+    if (prefix.trim() === '') {
+      throw new Error('Route prefix cannot be an empty string or whitespace');
+    }
+
     // Copy handlers from nested router with prefixed event types
     for (const [eventType, handlers] of router.handlers) {
       const fullEventType = `${prefix}.${eventType}`;
@@ -167,6 +183,11 @@ export class WebhookRouter<
    * @returns this for chaining
    */
   group(prefix: string, callback: (router: PrefixedRouter) => void): this {
+    // Reject empty prefix
+    if (prefix.trim() === '') {
+      throw new Error('Group prefix cannot be an empty string or whitespace');
+    }
+
     const prefixedRouter = new PrefixedRouter(
       prefix,
       this as unknown as WebhookRouter<Record<string, WebhookEvent>>
@@ -191,21 +212,22 @@ export class WebhookRouter<
     const { strategy = 'all-or-nothing', onError } = options;
 
     const fanoutHandler: EventHandler<WebhookEvent> = async (evt) => {
-      const promises = handlers.map((handler) =>
-        (handler as EventHandler<WebhookEvent>)(evt).catch((error: unknown) => {
-          if (strategy === 'best-effort') {
+      if (strategy === 'all-or-nothing') {
+        // All-or-nothing: all handlers must succeed, or the entire operation fails
+        const promises = handlers.map((handler) =>
+          (handler as EventHandler<WebhookEvent>)(evt)
+        );
+        await Promise.all(promises);
+      } else {
+        // Best-effort: continue even if some handlers fail
+        const promises = handlers.map((handler) =>
+          (handler as EventHandler<WebhookEvent>)(evt).catch((error: unknown) => {
             if (onError) {
               onError(error instanceof Error ? error : new Error(String(error)));
             }
             return undefined;
-          }
-          throw error;
-        })
-      );
-
-      if (strategy === 'all-or-nothing') {
-        await Promise.all(promises);
-      } else {
+          })
+        );
         await Promise.allSettled(promises);
       }
     };
@@ -238,7 +260,15 @@ export class WebhookRouter<
       const next = chain;
       chain = async () => {
         if (middleware) {
-          await middleware(event as WebhookEvent, next);
+          let nextCalled = false;
+          const wrappedNext = async () => {
+            if (nextCalled) {
+              throw new Error('Middleware next() function called multiple times');
+            }
+            nextCalled = true;
+            return await next();
+          };
+          await middleware(event as WebhookEvent, wrappedNext);
         }
       };
     }
@@ -271,7 +301,18 @@ class PrefixedRouter {
     handler: EventHandler<WebhookEvent>
   ): this {
     const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
+
+    // Warn if empty array is passed
+    if (Array.isArray(eventOrEvents) && eventOrEvents.length === 0) {
+      console.warn('PrefixedRouter.on(): Empty event array passed. No handlers registered.');
+      return this;
+    }
+
     for (const event of events) {
+      // Reject empty string event types
+      if (typeof event === 'string' && event.trim() === '') {
+        throw new Error('Event type cannot be an empty string or whitespace');
+      }
       const fullEventType = `${this.prefix}.${event}`;
       this.parent.on(fullEventType, handler);
     }
