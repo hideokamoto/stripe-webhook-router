@@ -454,7 +454,7 @@ describe('Zod Validation - Edge Cases', () => {
   });
 
   describe('validation middleware edge cases', () => {
-    it('should validate events through middleware in router', () => {
+    it('should validate events through middleware in router', async () => {
       const registry = new SchemaRegistry();
       const schema = createEventSchema('test.event', z.object({ id: z.number() }));
       registry.register('test.event', schema);
@@ -470,9 +470,9 @@ describe('Zod Validation - Edge Cases', () => {
         data: { object: { id: 42 } },
       };
 
-      router.dispatch(event).then(() => {
-        expect(handler).toHaveBeenCalled();
-      });
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalled();
     });
 
     it('should handle validation errors in middleware', () => {
@@ -496,7 +496,7 @@ describe('Zod Validation - Edge Cases', () => {
       });
     });
 
-    it('should allow unknown events by default', () => {
+    it('should allow unknown events by default', async () => {
       const registry = new SchemaRegistry();
 
       const router = new WebhookRouter();
@@ -510,9 +510,9 @@ describe('Zod Validation - Edge Cases', () => {
         data: { object: { anything: 'goes' } },
       };
 
-      router.dispatch(event).then(() => {
-        expect(handler).toHaveBeenCalled();
-      });
+      await router.dispatch(event);
+
+      expect(handler).toHaveBeenCalled();
     });
 
     it('should reject unknown events when configured', () => {

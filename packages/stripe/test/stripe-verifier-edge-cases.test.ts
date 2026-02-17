@@ -9,7 +9,8 @@ describe('Stripe Verifier - Edge Cases', () => {
 
   beforeEach(() => {
     stripe = new Stripe('sk_test_123', {
-      apiVersion: '2024-04-10',
+      // Use the same API version as production templates
+      apiVersion: '2022-11-15',
     });
     verifier = createStripeVerifier(stripe, webhookSecret);
   });

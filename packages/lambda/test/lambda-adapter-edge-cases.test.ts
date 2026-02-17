@@ -185,10 +185,11 @@ describe('lambdaAdapter - Edge Cases', () => {
 
       const handler = lambdaAdapter(router, { verifier: mockVerifier });
 
-      // Missing headers will cause an error when trying to iterate
-      await expect(
-        handler(mockEvent as any, mockContext as any)
-      ).rejects.toThrow();
+      // Missing headers are handled gracefully (treated as empty object)
+      const result = await handler(mockEvent as any, mockContext as any);
+
+      expect(result.statusCode).toBe(200);
+      expect(mockVerifier).toHaveBeenCalled();
     });
 
     it('should handle empty headers object', async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -219,6 +219,7 @@ describe('create-tayori CLI Integration Tests', () => {
         '--framework',
         'express',
       ]);
+      // cac aliases: --fw takes precedence when defined first in the option string
       expect(options.framework).toBe('hono');
     });
 

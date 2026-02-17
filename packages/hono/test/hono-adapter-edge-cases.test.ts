@@ -4,7 +4,10 @@ import { honoAdapter } from '../src/index.js';
 import { WebhookRouter, type Verifier, type WebhookEvent } from '@tayori/core';
 
 describe('honoAdapter - Edge Cases', () => {
-  let mockContext: Partial<Context>;
+  let mockContext: {
+    req: { text: () => Promise<string>; raw: { headers: Map<string, string> } };
+    json: (data: unknown, status?: number) => { data: unknown; status?: number };
+  };
   let router: WebhookRouter;
   let mockVerifier: Verifier<WebhookEvent>;
 
@@ -34,11 +37,11 @@ describe('honoAdapter - Edge Cases', () => {
 
   describe('empty and whitespace body handling', () => {
     it('should return 400 for empty body', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue('');
+      mockContext.req.text = vi.fn().mockResolvedValue('');
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Request body is required' },
@@ -47,7 +50,7 @@ describe('honoAdapter - Edge Cases', () => {
     });
 
     it('should handle whitespace-only body', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue('   \n\t  ');
+      mockContext.req.text = vi.fn().mockResolvedValue('   \n\t  ');
 
       const verifier = vi.fn().mockImplementation(() => {
         throw new Error('Whitespace only body');
@@ -55,7 +58,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Whitespace only body' },
@@ -64,11 +67,11 @@ describe('honoAdapter - Edge Cases', () => {
     });
 
     it('should handle null body', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue(null);
+      mockContext.req.text = vi.fn().mockResolvedValue(null);
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Request body is required' },
@@ -77,11 +80,11 @@ describe('honoAdapter - Edge Cases', () => {
     });
 
     it('should handle undefined body', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue(undefined);
+      mockContext.req.text = vi.fn().mockResolvedValue(undefined);
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Request body is required' },
@@ -92,7 +95,7 @@ describe('honoAdapter - Edge Cases', () => {
 
   describe('invalid JSON handling', () => {
     it('should handle invalid JSON in body', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue('{ invalid json }');
+      mockContext.req.text = vi.fn().mockResolvedValue('{ invalid json }');
 
       const verifier = vi.fn().mockImplementation(() => {
         throw new Error('Invalid JSON');
@@ -100,7 +103,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Invalid JSON' },
@@ -109,7 +112,7 @@ describe('honoAdapter - Edge Cases', () => {
     });
 
     it('should handle truncated JSON', async () => {
-      (mockContext.req as any).text = vi.fn().mockResolvedValue('{"incomplete":');
+      mockContext.req.text = vi.fn().mockResolvedValue('{"incomplete":');
 
       const verifier = vi.fn().mockImplementation(() => {
         throw new Error('Truncated JSON');
@@ -117,7 +120,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Truncated JSON' },
@@ -133,11 +136,11 @@ describe('honoAdapter - Edge Cases', () => {
       headerMap.set('stripe-signature', 'sig_value');
       headerMap.set('content-type', 'application/json');
 
-      (mockContext.req as any).raw.headers = headerMap;
+      mockContext.req.raw.headers = headerMap;
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      await middleware(mockContext as any);
+      await middleware(mockContext as unknown as Context);
 
       expect(mockVerifier).toHaveBeenCalledWith(
         expect.any(String),
@@ -155,11 +158,11 @@ describe('honoAdapter - Edge Cases', () => {
       headerMap.set('X-Signature', 'sig');
       headerMap.set('STRIPE-SIGNATURE', 'stripe_sig');
 
-      (mockContext.req as any).raw.headers = headerMap;
+      mockContext.req.raw.headers = headerMap;
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      await middleware(mockContext as any);
+      await middleware(mockContext as unknown as Context);
 
       expect(mockVerifier).toHaveBeenCalledWith(
         expect.any(String),
@@ -172,11 +175,11 @@ describe('honoAdapter - Edge Cases', () => {
     });
 
     it('should handle empty header map', async () => {
-      (mockContext.req as any).raw.headers = new Map();
+      mockContext.req.raw.headers = new Map();
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      await middleware(mockContext as any);
+      await middleware(mockContext as unknown as Context);
 
       expect(mockVerifier).toHaveBeenCalledWith(
         expect.any(String),
@@ -193,7 +196,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       // Non-Error objects are converted to "Verification failed"
       expect(result).toEqual({
@@ -213,7 +216,7 @@ describe('honoAdapter - Edge Cases', () => {
         onError: errorHandler,
       });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(errorHandler).toHaveBeenCalledWith(
         expect.any(Error),
@@ -238,7 +241,7 @@ describe('honoAdapter - Edge Cases', () => {
         onError: errorHandler,
       });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Internal server error' },
@@ -255,7 +258,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Internal server error' },
@@ -272,7 +275,7 @@ describe('honoAdapter - Edge Cases', () => {
         data: { object: { content: 'x'.repeat(10 * 1024 * 1024) } },
       };
 
-      (mockContext.req as any).text = vi.fn().mockResolvedValue(
+      mockContext.req.text = vi.fn().mockResolvedValue(
         JSON.stringify(largeEvent)
       );
 
@@ -280,7 +283,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      await middleware(mockContext as any);
+      await middleware(mockContext as unknown as Context);
 
       expect(verifier).toHaveBeenCalled();
     });
@@ -292,7 +295,7 @@ describe('honoAdapter - Edge Cases', () => {
         data: { object: { text: '你好世界 🎉 \n\t\r' } },
       };
 
-      (mockContext.req as any).text = vi.fn().mockResolvedValue(
+      mockContext.req.text = vi.fn().mockResolvedValue(
         JSON.stringify(specialEvent)
       );
 
@@ -300,7 +303,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      await middleware(mockContext as any);
+      await middleware(mockContext as unknown as Context);
 
       expect(verifier).toHaveBeenCalled();
     });
@@ -308,7 +311,7 @@ describe('honoAdapter - Edge Cases', () => {
     it('should handle request bodies with null bytes', async () => {
       const bodyWithNullByte = 'body\u0000content';
 
-      (mockContext.req as any).text = vi.fn().mockResolvedValue(bodyWithNullByte);
+      mockContext.req.text = vi.fn().mockResolvedValue(bodyWithNullByte);
 
       const verifier = vi.fn().mockImplementation(() => {
         throw new Error('Invalid body');
@@ -316,7 +319,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result.status).toBe(400);
     });
@@ -326,7 +329,7 @@ describe('honoAdapter - Edge Cases', () => {
     it('should return proper success response', async () => {
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { received: true },
@@ -341,7 +344,7 @@ describe('honoAdapter - Edge Cases', () => {
 
       const middleware = honoAdapter(router, { verifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { error: 'Signature verification failed' },
@@ -352,26 +355,26 @@ describe('honoAdapter - Edge Cases', () => {
 
   describe('async body reading', () => {
     it('should handle text() throwing errors', async () => {
-      (mockContext.req as any).text = vi.fn().mockRejectedValue(
+      mockContext.req.text = vi.fn().mockRejectedValue(
         new Error('Failed to read body')
       );
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
       // This should throw as the adapter doesn't catch text() errors
-      await expect(middleware(mockContext as any)).rejects.toThrow(
+      await expect(middleware(mockContext as unknown as Context)).rejects.toThrow(
         'Failed to read body'
       );
     });
 
     it('should handle slow body reading', async () => {
-      (mockContext.req as any).text = vi.fn(
+      mockContext.req.text = vi.fn(
         () => new Promise((resolve) => setTimeout(() => resolve(JSON.stringify(testEvent)), 100))
       );
 
       const middleware = honoAdapter(router, { verifier: mockVerifier });
 
-      const result = await middleware(mockContext as any);
+      const result = await middleware(mockContext as unknown as Context);
 
       expect(result).toEqual({
         data: { received: true },
