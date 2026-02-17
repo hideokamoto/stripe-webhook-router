@@ -104,7 +104,7 @@ describe('honoAdapter', () => {
     expect(res.status).toBe(400);
 
     const json = await res.json();
-    expect(json).toEqual({ error: 'Invalid signature' });
+    expect(json).toEqual({ error: 'Verification failed' });
   });
 
   it('should return 500 when handler throws', async () => {

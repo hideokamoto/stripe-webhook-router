@@ -129,7 +129,7 @@ describe('expressAdapter', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(400);
     expect(mockRes.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: 'Invalid signature' })
+      expect.objectContaining({ error: 'Verification failed' })
     );
   });
 
