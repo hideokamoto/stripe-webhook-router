@@ -28,7 +28,14 @@ export function eventBridgeAdapter<TEventMap extends Record<string, WebhookEvent
     _context: Context
   ): Promise<void> => {
     // Extract the webhook event from the EventBridge detail
-    const webhookEvent = eventBridgeEvent.detail as WebhookEvent;
+    const detail = eventBridgeEvent.detail;
+
+    // Silently ignore null or non-object details
+    if (detail === null || typeof detail !== 'object') {
+      return;
+    }
+
+    const webhookEvent = detail as WebhookEvent;
 
     try {
       await router.dispatch(webhookEvent);
