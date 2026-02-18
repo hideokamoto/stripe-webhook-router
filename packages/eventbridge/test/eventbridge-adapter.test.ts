@@ -255,7 +255,7 @@ describe('eventBridgeAdapter', () => {
       await expect(lambdaHandler(event, mockContext)).resolves.toBeUndefined();
     });
 
-    it('should throw error when detail field is null', async () => {
+    it('should handle null detail gracefully', async () => {
       const handler = vi.fn().mockResolvedValue(undefined);
       router.on('test.event', handler);
 
@@ -273,8 +273,8 @@ describe('eventBridgeAdapter', () => {
         detail: null,
       };
 
-      // With null detail, dispatch throws because it cannot read event.type
-      await expect(lambdaHandler(event, mockContext)).rejects.toThrow();
+      // With null detail, the adapter returns early without dispatching
+      await expect(lambdaHandler(event, mockContext)).resolves.toBeUndefined();
       expect(handler).not.toHaveBeenCalled();
     });
 
