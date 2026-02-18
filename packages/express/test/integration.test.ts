@@ -138,8 +138,7 @@ describe('Express adapter integration tests', () => {
   it('should call onError handler and still return 500', async () => {
     const onError = vi.fn().mockResolvedValue(undefined);
 
-    // Rebuild server with onError option
-    await stopServer(server);
+    // Use local variables so afterEach still cleans up the beforeEach server
     const app2 = express();
     const router2 = new WebhookRouter();
     router2.on('payment_intent.succeeded', async () => {
@@ -150,20 +149,24 @@ describe('Express adapter integration tests', () => {
       express.raw({ type: 'application/json' }),
       expressAdapter(router2, { verifier: mockVerifier, onError })
     );
-    ({ server, baseUrl } = await startServer(app2));
+    const { server: localServer, baseUrl: localBaseUrl } = await startServer(app2);
 
-    const response = await fetch(`${baseUrl}/webhook`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'stripe-signature': 'test_sig',
-      },
-      body: JSON.stringify(testEvent),
-    });
+    try {
+      const response = await fetch(`${localBaseUrl}/webhook`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'stripe-signature': 'test_sig',
+        },
+        body: JSON.stringify(testEvent),
+      });
 
-    expect(response.status).toBe(500);
-    expect(onError).toHaveBeenCalledOnce();
-    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+      expect(response.status).toBe(500);
+      expect(onError).toHaveBeenCalledOnce();
+      expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+    } finally {
+      await stopServer(localServer);
+    }
   });
 
   it('should handle multiple sequential requests correctly', async () => {
@@ -207,31 +210,36 @@ describe('Express adapter integration tests', () => {
     expect(body.error).toBe('Request body cannot be empty');
   });
 
-  it('should normalize multi-value headers by using the first value', async () => {
-    // Verify the verifier receives normalized headers
+  it('should use the first header value when header is single-valued', async () => {
+    // Verify the verifier receives headers as a plain string (not an array)
     const capturingVerifier = vi.fn().mockReturnValue({ event: testEvent });
 
-    await stopServer(server);
+    // Use local variables so afterEach still cleans up the beforeEach server
     const app3 = express();
     app3.post(
       '/webhook',
       express.raw({ type: 'application/json' }),
       expressAdapter(new WebhookRouter(), { verifier: capturingVerifier })
     );
-    ({ server, baseUrl } = await startServer(app3));
+    const { server: localServer, baseUrl: localBaseUrl } = await startServer(app3);
 
-    const response = await fetch(`${baseUrl}/webhook`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'stripe-signature': 'sig_value',
-      },
-      body: JSON.stringify(testEvent),
-    });
+    try {
+      const response = await fetch(`${localBaseUrl}/webhook`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'stripe-signature': 'sig_value',
+        },
+        body: JSON.stringify(testEvent),
+      });
 
-    expect(response.status).toBe(200);
-    const receivedHeaders = (capturingVerifier.mock.calls[0] as unknown[])[1] as Record<string, string>;
-    expect(typeof receivedHeaders['stripe-signature']).toBe('string');
-    expect(receivedHeaders['stripe-signature']).toBe('sig_value');
+      expect(response.status).toBe(200);
+      const calls = capturingVerifier.mock.calls as Array<[unknown, Record<string, string>]>;
+      const receivedHeaders = calls[0][1];
+      expect(typeof receivedHeaders['stripe-signature']).toBe('string');
+      expect(receivedHeaders['stripe-signature']).toBe('sig_value');
+    } finally {
+      await stopServer(localServer);
+    }
   });
 });

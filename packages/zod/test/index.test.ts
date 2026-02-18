@@ -794,7 +794,7 @@ describe('withValidation - Symbol properties', () => {
     expect(received[sym]).toBe('secret-symbol-value');
   });
 
-  it('symbol properties on data.object are handled by Zod passthrough', async () => {
+  it('Zod passthrough preserves string keys but drops Symbol keys in data.object', async () => {
     const sym = Symbol('extra');
     const issueOpened = defineEvent(
       'issue.opened',
@@ -817,8 +817,11 @@ describe('withValidation - Symbol properties', () => {
 
     expect(handler).toHaveBeenCalledOnce();
     const received = handler.mock.calls[0][0] as typeof event;
-    // data.object.id survives Zod passthrough
+    // String key "id" survives Zod passthrough
     expect(received.data.object.id).toBe(42);
+    // Symbol key is NOT preserved by Zod: Zod parses via Object.entries-like
+    // mechanisms that only enumerate string-keyed properties
+    expect((received.data.object as Record<symbol, unknown>)[sym]).toBeUndefined();
   });
 });
 
