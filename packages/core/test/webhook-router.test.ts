@@ -1046,6 +1046,74 @@ describe('WebhookRouter', () => {
     });
   });
 
+  describe('handler return values', () => {
+    it('should ignore non-void return values from handlers', async () => {
+      const router = new WebhookRouter();
+
+      // Handler returns a value (not void) — dispatch should still succeed
+      router.on('test.event', async () => {
+        return 'some-return-value' as unknown as void;
+      });
+
+      const event = {
+        id: 'evt_ret',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      // dispatch() should resolve to undefined regardless of handler return
+      const result = await router.dispatch(event);
+      expect(result).toBeUndefined();
+    });
+
+    it('should resolve to undefined even when handler returns a number', async () => {
+      const router = new WebhookRouter();
+
+      router.on('test.event', async () => {
+        return 42 as unknown as void;
+      });
+
+      const event = {
+        id: 'evt_num_ret',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      const result = await router.dispatch(event);
+      expect(result).toBeUndefined();
+    });
+
+    it('should resolve to undefined when no handlers are registered', async () => {
+      const router = new WebhookRouter();
+
+      const event = {
+        id: 'evt_no_handler',
+        type: 'unregistered.event',
+        data: { object: {} },
+      };
+
+      const result = await router.dispatch(event);
+      expect(result).toBeUndefined();
+    });
+
+    it('should resolve to undefined when multiple handlers return values', async () => {
+      const router = new WebhookRouter();
+
+      router.on('test.event', async () => { return 1 as unknown as void; });
+      router.on('test.event', async () => { return 'two' as unknown as void; });
+      router.on('test.event', async () => { return { three: true } as unknown as void; });
+
+      const event = {
+        id: 'evt_multi_ret',
+        type: 'test.event',
+        data: { object: {} },
+      };
+
+      const result = await router.dispatch(event);
+      expect(result).toBeUndefined();
+    });
+  });
+
   describe('Middleware next() call prevention', () => {
     it('should detect multiple next() calls and throw error', async () => {
       const router = new WebhookRouter();

@@ -585,5 +585,69 @@ describe('createStripeVerifier', () => {
       );
       expect(result.event).toBe(testEvent);
     });
+
+    it('should distinguish timestamp tolerance errors from signature errors', () => {
+      const timestampError = new Error(
+        'Webhook Error: Timestamp outside the tolerance zone'
+      );
+      const signatureError = new Error(
+        'Webhook Error: No signatures found matching the expected signature for payload'
+      );
+
+      const mockStripeTimestamp = {
+        webhooks: {
+          constructEvent: vi.fn().mockImplementation(() => { throw timestampError; }),
+        },
+      } as unknown as Stripe;
+
+      const mockStripeSignature = {
+        webhooks: {
+          constructEvent: vi.fn().mockImplementation(() => { throw signatureError; }),
+        },
+      } as unknown as Stripe;
+
+      const verifierTimestamp = createStripeVerifier(mockStripeTimestamp, 'whsec_test');
+      const verifierSignature = createStripeVerifier(mockStripeSignature, 'whsec_test');
+
+      const headers = { 'stripe-signature': 't=0,v1=abc123' };
+
+      // Timestamp error: expired webhook replay
+      expect(() => verifierTimestamp('{}', headers)).toThrow('Timestamp outside the tolerance zone');
+      // Signature error: tampered payload or wrong secret
+      expect(() => verifierSignature('{}', headers)).toThrow('No signatures found matching');
+    });
+
+    it('should propagate timestamp-expired errors from Stripe SDK', () => {
+      const expiredError = new Error('Webhook Error: Timestamp outside the tolerance zone');
+
+      const mockStripe = {
+        webhooks: {
+          constructEvent: vi.fn().mockImplementation(() => { throw expiredError; }),
+        },
+      } as unknown as Stripe;
+
+      const verifier = createStripeVerifier(mockStripe, 'whsec_test');
+      const headers = { 'stripe-signature': 't=0,v1=abc123' };
+
+      // Should propagate the full original error from Stripe
+      expect(() => verifier('{}', headers)).toThrow(expiredError.message);
+    });
+
+    it('should propagate invalid-format signature errors from Stripe SDK', () => {
+      const formatError = new Error(
+        'Webhook Error: No v1 signature found in the `Stripe-Signature` header'
+      );
+
+      const mockStripe = {
+        webhooks: {
+          constructEvent: vi.fn().mockImplementation(() => { throw formatError; }),
+        },
+      } as unknown as Stripe;
+
+      const verifier = createStripeVerifier(mockStripe, 'whsec_test');
+      const headers = { 'stripe-signature': 'malformed-header' };
+
+      expect(() => verifier('{}', headers)).toThrow('No v1 signature found');
+    });
   });
 });

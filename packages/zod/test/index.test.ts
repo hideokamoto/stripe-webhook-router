@@ -717,3 +717,155 @@ describe('baseEventSchema', () => {
     expect(() => baseEventSchema.parse({ id: '123', type: 'test' })).toThrow();
   });
 });
+
+describe('withValidation - frozen objects', () => {
+  it('throws TypeError when mutating a frozen event object', async () => {
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({ id: z.number() })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const frozenEvent = Object.freeze({
+      id: 'evt_frozen',
+      type: 'issue.opened',
+      data: Object.freeze({ object: Object.freeze({ id: 1 }) }),
+    });
+
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', vi.fn());
+
+    // Mutating a frozen object throws TypeError in strict mode
+    await expect(
+      router.dispatch(frozenEvent as unknown as Parameters<typeof router.dispatch>[0])
+    ).rejects.toThrow(TypeError);
+  });
+
+  it('passes through unregistered frozen events (no mutation needed)', async () => {
+    const registry = new SchemaRegistry();
+
+    const frozenEvent = Object.freeze({
+      id: 'evt_frozen_unknown',
+      type: 'unknown.event',
+      data: Object.freeze({ object: {} }),
+    });
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry, { allowUnknownEvents: true }))
+      .on('unknown.event', handler);
+
+    // No mutation occurs for unknown events, so frozen object is fine
+    await router.dispatch(frozenEvent as unknown as Parameters<typeof router.dispatch>[0]);
+    expect(handler).toHaveBeenCalledOnce();
+  });
+});
+
+describe('withValidation - Symbol properties', () => {
+  it('does not enumerate Symbol properties during event mutation', async () => {
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({ id: z.number() })
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const sym = Symbol('private-data');
+    const eventWithSymbol: Record<string | symbol, unknown> = {
+      id: 'evt_sym',
+      type: 'issue.opened',
+      data: { object: { id: 1 } },
+      [sym]: 'secret-symbol-value',
+    };
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch(eventWithSymbol as unknown as Parameters<typeof router.dispatch>[0]);
+
+    expect(handler).toHaveBeenCalledOnce();
+    const received = handler.mock.calls[0][0] as typeof eventWithSymbol;
+    // Core fields survive mutation
+    expect(received.type).toBe('issue.opened');
+    // Object.getOwnPropertyNames() does NOT include Symbol keys, so the Symbol
+    // property is never deleted during the mutation step - it is preserved.
+    expect(received[sym]).toBe('secret-symbol-value');
+  });
+
+  it('symbol properties on data.object are handled by Zod passthrough', async () => {
+    const sym = Symbol('extra');
+    const issueOpened = defineEvent(
+      'issue.opened',
+      z.object({ id: z.number() }).passthrough()
+    );
+    const registry = new SchemaRegistry().registerAll({ issueOpened });
+
+    const event = {
+      id: 'evt_sym2',
+      type: 'issue.opened',
+      data: { object: { id: 42, [sym]: 'kept?' } },
+    };
+
+    const handler = vi.fn();
+    const router = new WebhookRouter()
+      .use(withValidation(registry))
+      .on('issue.opened', handler);
+
+    await router.dispatch(event);
+
+    expect(handler).toHaveBeenCalledOnce();
+    const received = handler.mock.calls[0][0] as typeof event;
+    // data.object.id survives Zod passthrough
+    expect(received.data.object.id).toBe(42);
+  });
+});
+
+describe('SchemaRegistry - duplicate registration edge cases', () => {
+  it('register() warns only on the second registration, not the first', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const registry = new SchemaRegistry();
+    const schema = createEventSchema('test.event', z.object({ id: z.number() }));
+
+    registry.register('test.event', schema); // First: no warning
+    expect(consoleWarn).not.toHaveBeenCalled();
+
+    registry.register('test.event', schema); // Second: should warn
+    expect(consoleWarn).toHaveBeenCalledOnce();
+
+    consoleWarn.mockRestore();
+  });
+
+  it('strict mode throws on duplicate, non-strict mode warns and continues', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const schema = createEventSchema('test.event', z.object({ id: z.number() }));
+    const schema2 = createEventSchema('test.event', z.object({ id: z.string() }));
+
+    const strictRegistry = new SchemaRegistry({ strict: true });
+    strictRegistry.register('test.event', schema);
+    expect(() => strictRegistry.register('test.event', schema2)).toThrow(
+      'Schema for event type "test.event" is already registered'
+    );
+
+    const lenientRegistry = new SchemaRegistry();
+    lenientRegistry.register('test.event', schema);
+    lenientRegistry.register('test.event', schema2); // Should warn, not throw
+    expect(consoleWarn).toHaveBeenCalledOnce();
+
+    consoleWarn.mockRestore();
+  });
+
+  it('registerAll does not trigger the duplicate-registration guard', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const issueOpened = defineEvent('issue.opened', z.object({ id: z.number() }));
+
+    const registry = new SchemaRegistry();
+    registry.registerAll({ issueOpened });
+    registry.registerAll({ issueOpened }); // Uses Map.set directly — no guard
+
+    // registerAll bypasses register(), so no warning is emitted
+    expect(consoleWarn).not.toHaveBeenCalled();
+    consoleWarn.mockRestore();
+  });
+});
