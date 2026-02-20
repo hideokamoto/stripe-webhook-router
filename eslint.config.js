@@ -43,6 +43,7 @@ export default tseslint.config(
       '**/*.js',
       '**/*.mjs',
       '**/*.cjs',
+      '**/.astro/**',
     ],
   },
 );

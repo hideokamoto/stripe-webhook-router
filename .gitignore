@@ -88,6 +88,9 @@ out
 .nuxt
 dist
 
+# Astro-generated metadata/types/cache
+.astro/
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js

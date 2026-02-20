@@ -8,7 +8,7 @@ export default defineConfig({
       title: 'Tayori',
       description: 'A Hono-inspired, type-safe webhook routing library for TypeScript.',
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/your-org/tayori' },
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
       sidebar: [
         {

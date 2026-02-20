@@ -65,3 +65,14 @@ router.on('payment_intent.succeeded', handler);
 ## With validation
 
 When using `@tayori/zod`, add `withValidation(registry)` as middleware so events are validated before reaching handlers. Place it where you want validation in the pipeline (e.g. after logging, before handlers).
+
+```typescript
+import { SchemaRegistry, withValidation } from '@tayori/zod';
+
+const registry = new SchemaRegistry();
+// Register your event schemas with registry...
+
+router.use(loggingMiddleware);
+router.use(withValidation(registry));
+router.on('payment_intent.succeeded', handler);
+```
