@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightChangelogs, { makeChangelogsSidebarLinks } from 'starlight-changelogs';
 import starlightLlmsTxt from 'starlight-llms-txt';
 import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
@@ -10,6 +11,7 @@ export default defineConfig({
       title: 'Tayori',
       description: 'A Hono-inspired, type-safe webhook routing library for TypeScript.',
       plugins: [
+        starlightChangelogs(),
         starlightLlmsTxt(),
         starlightTypeDoc({
           entryPoints: [
@@ -62,6 +64,21 @@ export default defineConfig({
             { label: 'Custom Webhooks', slug: 'guides/custom-webhooks' },
             { label: 'Middleware', slug: 'guides/middleware' },
             { label: 'Routing', slug: 'guides/routing' },
+          ],
+        },
+        {
+          label: 'Changelog',
+          items: [
+            ...makeChangelogsSidebarLinks([
+              { type: 'latest', label: '@tayori/core', base: 'changelog/core' },
+              { type: 'latest', label: '@tayori/stripe', base: 'changelog/stripe' },
+              { type: 'latest', label: '@tayori/zod', base: 'changelog/zod' },
+              { type: 'latest', label: '@tayori/hono', base: 'changelog/hono' },
+              { type: 'latest', label: '@tayori/express', base: 'changelog/express' },
+              { type: 'latest', label: '@tayori/lambda', base: 'changelog/lambda' },
+              { type: 'latest', label: '@tayori/eventbridge', base: 'changelog/eventbridge' },
+              { type: 'latest', label: 'create-tayori', base: 'changelog/create-tayori' },
+            ]),
           ],
         },
         typeDocSidebarGroup,
