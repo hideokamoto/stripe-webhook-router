@@ -12,7 +12,6 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
-<<<<<<< HEAD
       plugins: [
         starlightChangelogs(),
         starlightTypeDoc({
