@@ -149,3 +149,6 @@ vite.config.ts.timestamp-*
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# TypeDoc generated API documentation (auto-generated at build time)
+docs/src/content/docs/api/
