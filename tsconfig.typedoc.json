@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "paths": {
+      "@tayori/core": ["./packages/core/src/index.ts"],
+      "@tayori/stripe": ["./packages/stripe/src/index.ts"],
+      "@tayori/zod": ["./packages/zod/src/index.ts"],
+      "@tayori/hono": ["./packages/hono/src/index.ts"],
+      "@tayori/express": ["./packages/express/src/index.ts"],
+      "@tayori/lambda": ["./packages/lambda/src/index.ts"],
+      "@tayori/eventbridge": ["./packages/eventbridge/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/core/src/**/*",
+    "packages/stripe/src/**/*",
+    "packages/zod/src/**/*",
+    "packages/hono/src/**/*",
+    "packages/express/src/**/*",
+    "packages/lambda/src/**/*",
+    "packages/eventbridge/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "packages/create-tayori/**/*",
+    "docs/**/*"
+  ]
+}

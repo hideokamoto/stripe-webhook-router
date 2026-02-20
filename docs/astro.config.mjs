@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightChangelogs, { makeChangelogsSidebarLinks } from 'starlight-changelogs';
+import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 export default defineConfig({
   site: 'https://tayori-docs.workers.dev',
@@ -11,7 +12,29 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
-      plugins: [starlightChangelogs()],
+<<<<<<< HEAD
+      plugins: [
+        starlightChangelogs(),
+        starlightTypeDoc({
+          entryPoints: [
+            '../packages/core/src/index.ts',
+            '../packages/stripe/src/index.ts',
+            '../packages/zod/src/index.ts',
+            '../packages/hono/src/index.ts',
+            '../packages/express/src/index.ts',
+            '../packages/lambda/src/index.ts',
+            '../packages/eventbridge/src/index.ts',
+          ],
+          tsconfig: '../tsconfig.typedoc.json',
+          sidebar: {
+            label: 'API Reference',
+            collapsed: true,
+          },
+          typeDoc: {
+            excludeExternals: true,
+          },
+        }),
+      ],
       sidebar: [
         {
           label: 'Getting Started',
@@ -57,6 +80,7 @@ export default defineConfig({
             ]),
           ],
         },
+        typeDocSidebarGroup,
       ],
     }),
   ],
