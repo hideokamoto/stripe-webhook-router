@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightChangelogs, { makeChangelogsSidebarLinks } from 'starlight-changelogs';
+import starlightLlmsTxt from 'starlight-llms-txt';
 import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 export default defineConfig({
@@ -9,11 +10,9 @@ export default defineConfig({
     starlight({
       title: 'Tayori',
       description: 'A Hono-inspired, type-safe webhook routing library for TypeScript.',
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
-      ],
       plugins: [
         starlightChangelogs(),
+        starlightLlmsTxt(),
         starlightTypeDoc({
           entryPoints: [
             '../packages/core/src/index.ts',
@@ -33,6 +32,9 @@ export default defineConfig({
             excludeExternals: true,
           },
         }),
+      ],
+      social: [
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
       sidebar: [
         {
