@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLlmsTxt from 'starlight-llms-txt';
+import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 export default defineConfig({
   site: 'https://tayori-docs.workers.dev',
@@ -8,7 +9,28 @@ export default defineConfig({
     starlight({
       title: 'Tayori',
       description: 'A Hono-inspired, type-safe webhook routing library for TypeScript.',
-      plugins: [starlightLlmsTxt()],
+      plugins: [
+        starlightLlmsTxt(),
+        starlightTypeDoc({
+          entryPoints: [
+            '../packages/core/src/index.ts',
+            '../packages/stripe/src/index.ts',
+            '../packages/zod/src/index.ts',
+            '../packages/hono/src/index.ts',
+            '../packages/express/src/index.ts',
+            '../packages/lambda/src/index.ts',
+            '../packages/eventbridge/src/index.ts',
+          ],
+          tsconfig: '../tsconfig.typedoc.json',
+          sidebar: {
+            label: 'API Reference',
+            collapsed: true,
+          },
+          typeDoc: {
+            excludeExternals: true,
+          },
+        }),
+      ],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
@@ -42,6 +64,7 @@ export default defineConfig({
             { label: 'Routing', slug: 'guides/routing' },
           ],
         },
+        typeDocSidebarGroup,
       ],
     }),
   ],
