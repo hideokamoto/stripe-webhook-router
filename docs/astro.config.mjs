@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 export default defineConfig({
   site: 'https://tayori-docs.workers.dev',
@@ -7,6 +8,7 @@ export default defineConfig({
     starlight({
       title: 'Tayori',
       description: 'A Hono-inspired, type-safe webhook routing library for TypeScript.',
+      plugins: [starlightLlmsTxt()],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/hideokamoto/stripe-webhook-router' },
       ],
