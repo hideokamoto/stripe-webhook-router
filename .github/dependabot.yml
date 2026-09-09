@@ -17,12 +17,24 @@ updates:
       - "npm"
     # Group related dependencies
     groups:
+      # Isolated so a stripe bump always lands as its own PR — this is the
+      # detection mechanism for issue #54 (StripeEventMap drift). See
+      # packages/stripe/MAINTAINING_STRIPE_EVENTMAP.md for the full policy.
+      # The existing `check-stripe-events` job in ci.yml blocks the merge if
+      # the SDK update introduces event types StripeEventMap doesn't cover.
+      stripe:
+        patterns:
+          - "stripe"
       production:
         dependency-types:
           - "production"
+        exclude-patterns:
+          - "stripe"
       development:
         dependency-types:
           - "development"
+        exclude-patterns:
+          - "stripe"
 
   # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"

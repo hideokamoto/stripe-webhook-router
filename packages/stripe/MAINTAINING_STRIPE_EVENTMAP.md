@@ -48,14 +48,56 @@ When updating the `stripe` package:
 3. Add any missing events to `StripeEventMap`
 4. Run the test suite: `pnpm test`
 
+## stripe SDK Version Policy
+
+- **devDependency**: `^22.0.0` — the pinned range used for local development and CI builds.
+- **peerDependency**: `>=17.0.0` — the minimum version consumers must provide.
+- **Bumping**: handled by Dependabot (see below), or manually via `pnpm update stripe`.
+  Before merging any stripe bump — Dependabot-authored or manual — confirm
+  `pnpm run check-events` is green. The CI `check-stripe-events` job enforces
+  this automatically on every push and PR.
+
 ## CI Integration
 
-Consider adding the check script to your CI pipeline:
+Detecting drift between `StripeEventMap` and the Stripe SDK relies on two
+pieces working together:
+
+### 1. Detection: Dependabot
+
+`.github/dependabot.yml` runs weekly `npm` updates and groups `stripe` into
+its own isolated PR (separate from other production/development
+dependencies), so a new `stripe` release always surfaces as its own,
+easy-to-review pull request rather than being buried in a bundled bump.
+
+### 2. Enforcement: `check-stripe-events` (`.github/workflows/ci.yml`)
 
 ```yaml
 # .github/workflows/ci.yml
-- name: Check Stripe events sync
-  run: pnpm run check-events
+check-stripe-events:
+  name: Check Stripe Events Sync
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 9.15.0
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: 'pnpm'
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm --filter @kotodayori/stripe run check-events
 ```
 
-This will fail the build if the event map becomes out of sync with the SDK.
+This job runs on every push and pull request — including the Dependabot PR
+that bumps `stripe`. If the new SDK version introduces event types
+`StripeEventMap` doesn't cover, this job fails and blocks the merge, forcing
+the map to be updated as part of that same PR before it can land.
+
+**Why not a separate scheduled workflow?** An earlier design added a weekly
+`schedule`-triggered job that installed `stripe@latest` directly to catch
+upstream additions ahead of the pinned version. That approach was rejected —
+Dependabot already provides the weekly cadence, and routing the SDK bump
+through a normal, reviewable pull request (checked by the same
+`check-stripe-events` job) is simpler than maintaining a second, parallel CI
+workflow for the same signal.
